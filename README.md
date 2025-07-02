@@ -41,16 +41,6 @@ return {
     "ClaudeCodeRestoreSession",
     "ClaudeCodeNewWithSelection" 
   },
-  keys = {
-    { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
-    { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
-    { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "claude: send selection" },
-    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "claude: save session" },
-    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "claude: update session" },
-    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "claude: browse sessions" },
-    { "<leader>cr", "<cmd>ClaudeCodeRestoreSession<cr>", desc = "claude: restore session" },
-    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", mode = "v", desc = "claude: new with selection" },
-  },
   config = function()
     require("claude-code").setup({
       claude_code_cmd = "claude",
@@ -62,6 +52,17 @@ return {
       auto_scroll = true,
       save_session = true,
       session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
+      -- Default keybindings (can be customized)
+      keybindings = {
+        toggle = "<leader>cc",
+        new_session = "<leader>cn", 
+        send_selection = "<leader>cs",
+        save_session = "<leader>cS",
+        update_session = "<leader>cu",
+        browse_sessions = "<leader>cb",
+        restore_session = "<leader>cr",
+        new_with_selection = "<leader>cw",
+      },
     })
   end,
 }
@@ -170,41 +171,63 @@ require("claude-code").setup({
   -- Save sessions to files
   save_session = true,
   session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
+
+  -- Default keybindings (set to false to disable, or change keys)
+  keybindings = {
+    toggle = "<leader>cc",           -- Toggle Claude Code window
+    new_session = "<leader>cn",      -- Start new session
+    send_selection = "<leader>cs",   -- Send selection to Claude (visual mode)
+    save_session = "<leader>cS",     -- Save session with name
+    update_session = "<leader>cu",   -- Update current session
+    browse_sessions = "<leader>cb",  -- Browse sessions
+    restore_session = "<leader>cr",  -- Restore session
+    new_with_selection = "<leader>cw", -- New session with selection (visual mode)
+  },
 })
 ```
 
 ## 🔧 Customization
 
-### Custom Keybinding Examples
+### Built-in Keybindings
 
-You can customize the keybindings in various ways:
+The plugin now sets up keybindings automatically! You don't need to specify them in your LazyVim configuration. The default keybindings are set up when you call `setup()`.
+
+### Customizing Keybindings
+
+You can customize or disable keybindings through the setup configuration:
 
 ```lua
--- Basic keybindings without icons
-keys = {
-  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
-  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
-  { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "claude: send selection" },
-},
-
--- Or create a Claude-themed group
-keys = {
-  { "<leader>c", group = "claude" },
-  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
-  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
-  -- ... other keybindings
-},
+require("claude-code").setup({
+  keybindings = {
+    toggle = "<leader>ai",           -- Change to different key
+    new_session = "<leader>an",      -- Custom keybinding
+    send_selection = false,          -- Disable this keybinding
+    save_session = "<leader>aS",     -- Use different key combination
+    -- ... other keybindings
+  },
+})
 ```
 
-### Custom Keybindings
+### Alternative: Manual Keybindings (LazyVim keys spec)
+
+If you prefer to manage keybindings manually, disable the built-in ones and use LazyVim's keys spec:
 
 ```lua
--- Add to your LazyVim plugin spec
-keys = {
-  { "<leader>ai", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle claude code" },
-  { "<leader>an", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new claude code session" },
-  { "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "claude: send to claude code" },
-},
+return {
+  "carlos-rodrigo/claude-code.nvim",
+  cmd = { "ClaudeCode", "ClaudeCodeNew", "ClaudeCodeToggle", ... },
+  keys = {
+    { "<leader>ai", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle claude code" },
+    { "<leader>an", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new claude code session" },
+    { "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "claude: send to claude code" },
+  },
+  config = function()
+    require("claude-code").setup({
+      keybindings = false, -- Disable all built-in keybindings
+      -- ... other config
+    })
+  end,
+}
 ```
 
 ### Integration with Other Plugins

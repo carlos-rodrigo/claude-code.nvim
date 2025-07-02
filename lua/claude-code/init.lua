@@ -13,6 +13,17 @@ local default_config = {
 	auto_scroll = true,
 	save_session = true,
 	session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
+	-- Default keybindings
+	keybindings = {
+		toggle = "<leader>cc",
+		new_session = "<leader>cn",
+		send_selection = "<leader>cs",
+		save_session = "<leader>cS",
+		update_session = "<leader>cu",
+		browse_sessions = "<leader>cb",
+		restore_session = "<leader>cr",
+		new_with_selection = "<leader>cw",
+	},
 }
 
 -- Plugin state
@@ -262,6 +273,35 @@ function M.setup(opts)
 	vim.api.nvim_create_user_command("ClaudeCodeRestoreSession", function()
 		M.restore_session_interactive()
 	end, { desc = "claude: restore session from file" })
+
+	-- Set up keybindings (only if not disabled)
+	local keys = state.config.keybindings
+	if keys ~= false then
+		if keys.toggle then
+			vim.keymap.set("n", keys.toggle, "<cmd>ClaudeCodeToggle<cr>", { desc = "claude: toggle" })
+		end
+		if keys.new_session then
+			vim.keymap.set("n", keys.new_session, "<cmd>ClaudeCodeNew<cr>", { desc = "claude: new session" })
+		end
+		if keys.send_selection then
+			vim.keymap.set("v", keys.send_selection, "<cmd>ClaudeCodeSend<cr>", { desc = "claude: send selection" })
+		end
+		if keys.save_session then
+			vim.keymap.set("n", keys.save_session, "<cmd>ClaudeCodeSaveSession<cr>", { desc = "claude: save session" })
+		end
+		if keys.update_session then
+			vim.keymap.set("n", keys.update_session, "<cmd>ClaudeCodeUpdateSession<cr>", { desc = "claude: update session" })
+		end
+		if keys.browse_sessions then
+			vim.keymap.set("n", keys.browse_sessions, "<cmd>ClaudeCodeSessions<cr>", { desc = "claude: browse sessions" })
+		end
+		if keys.restore_session then
+			vim.keymap.set("n", keys.restore_session, "<cmd>ClaudeCodeRestoreSession<cr>", { desc = "claude: restore session" })
+		end
+		if keys.new_with_selection then
+			vim.keymap.set("v", keys.new_with_selection, "<cmd>ClaudeCodeNewWithSelection<cr>", { desc = "claude: new with selection" })
+		end
+	end
 end
 
 function M.open()
