@@ -1,12 +1,12 @@
 -- claude-code.nvim
 -- A Neovim plugin for Claude Code integration
--- https://github.com/your-username/claude-code.nvim
+-- https://github.com/carlos-rodrigo/claude-code.nvim
 
 local M = {}
 
 -- Default configuration
 local default_config = {
-	claude_code_cmd = "claude-code",
+	claude_code_cmd = "claude",
 	window = {
 		type = "vsplit", -- "split", "vsplit", "tabnew", "float"
 		position = "right", -- for splits: "right", "left", "top", "bottom"
@@ -114,9 +114,9 @@ local function create_claude_buffer()
 	-- Create buffer
 	state.bufnr = vim.api.nvim_create_buf(false, true)
 
-	-- Set buffer options
-	vim.api.nvim_buf_set_option(state.bufnr, "buftype", "terminal")
-	vim.api.nvim_buf_set_option(state.bufnr, "swapfile", false)
+	-- Set buffer options using modern API
+	vim.bo[state.bufnr].buftype = "terminal"
+	vim.bo[state.bufnr].swapfile = false
 	vim.api.nvim_buf_set_name(state.bufnr, "Claude Code")
 
 	-- Create window based on configuration
@@ -125,7 +125,7 @@ local function create_claude_buffer()
 	if win_config.type == "float" then
 		-- Create floating window
 		state.winnr = vim.api.nvim_open_win(state.bufnr, true, win_config)
-		vim.api.nvim_win_set_option(state.winnr, "winhl", "Normal:Normal,FloatBorder:FloatBorder")
+		vim.wo[state.winnr].winhl = "Normal:Normal,FloatBorder:FloatBorder"
 	elseif win_config.type == "tabnew" then
 		-- Create new tab
 		vim.cmd("tabnew")
@@ -227,7 +227,7 @@ function M.open()
 
 			if win_config.type == "float" then
 				state.winnr = vim.api.nvim_open_win(state.bufnr, true, win_config)
-				vim.api.nvim_win_set_option(state.winnr, "winhl", "Normal:Normal,FloatBorder:FloatBorder")
+				vim.wo[state.winnr].winhl = "Normal:Normal,FloatBorder:FloatBorder"
 			elseif win_config.type == "tabnew" then
 				vim.cmd("tabnew")
 				state.winnr = vim.api.nvim_get_current_win()
