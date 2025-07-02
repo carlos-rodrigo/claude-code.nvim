@@ -42,18 +42,18 @@ return {
     "ClaudeCodeNewWithSelection" 
   },
   keys = {
-    { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code" },
-    { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session" },
-    { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection to Claude" },
-    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "Save Claude Code session" },
-    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "Update current session" },
-    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "Browse Claude Code sessions" },
-    { "<leader>cr", "<cmd>ClaudeCodeRestoreSession<cr>", desc = "Restore Claude Code session" },
-    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", mode = "v", desc = "New session with selection" },
+    { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
+    { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
+    { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "claude: send selection" },
+    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "claude: save session" },
+    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "claude: update session" },
+    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "claude: browse sessions" },
+    { "<leader>cr", "<cmd>ClaudeCodeRestoreSession<cr>", desc = "claude: restore session" },
+    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", mode = "v", desc = "claude: new with selection" },
   },
   config = function()
     require("claude-code").setup({
-      claude_code_cmd = "claude-code",
+      claude_code_cmd = "claude",
       window = {
         type = "vsplit",        -- "split", "vsplit", "tabnew", "float"
         position = "right",     -- "right", "left", "top", "bottom"
@@ -87,28 +87,28 @@ require("claude-code").setup()
 
 | Command                      | Description                                        |
 | ---------------------------- | -------------------------------------------------- |
-| `:ClaudeCode`                | Open Claude Code buffer                            |
-| `:ClaudeCodeNew`             | Start a new Claude Code session                   |
-| `:ClaudeCodeToggle`          | Toggle Claude Code window visibility              |
-| `:ClaudeCodeSend`            | Send selected text to Claude (visual mode)        |
-| `:ClaudeCodeSaveSession`     | Save current session with a custom name           |
-| `:ClaudeCodeUpdateSession`   | Update the current named session                  |
-| `:ClaudeCodeSessions`        | Browse and view previous Claude Code sessions     |
-| `:ClaudeCodeRestoreSession`  | Restore a saved session as new active session     |
-| `:ClaudeCodeNewWithSelection`| Start new session with selected text as prompt    |
+| `:ClaudeCode`                | claude: open buffer                               |
+| `:ClaudeCodeNew`             | claude: new session                               |
+| `:ClaudeCodeToggle`          | claude: toggle window                             |
+| `:ClaudeCodeSend`            | claude: send selection                            |
+| `:ClaudeCodeSaveSession`     | claude: save session                              |
+| `:ClaudeCodeUpdateSession`   | claude: update session                            |
+| `:ClaudeCodeSessions`        | claude: browse sessions                           |
+| `:ClaudeCodeRestoreSession`  | claude: restore session                           |
+| `:ClaudeCodeNewWithSelection`| claude: new with selection                        |
 
 ### Default Keybindings
 
 | Key          | Mode   | Action                        |
 | ------------ | ------ | ----------------------------- |
-| `<leader>cc` | Normal | Toggle Claude Code window     |
-| `<leader>cn` | Normal | Start new Claude Code session |
-| `<leader>cs` | Visual | Send selection to Claude      |
-| `<leader>cS` | Normal | Save Claude Code session      |
-| `<leader>cu` | Normal | Update current session        |
-| `<leader>cb` | Normal | Browse Claude Code sessions   |
-| `<leader>cr` | Normal | Restore Claude Code session   |
-| `<leader>cw` | Visual | New session with selection    |
+| `<leader>cc` | Normal | claude: toggle window         |
+| `<leader>cn` | Normal | claude: new session           |
+| `<leader>cs` | Visual | claude: send selection        |
+| `<leader>cS` | Normal | claude: save session          |
+| `<leader>cu` | Normal | claude: update session        |
+| `<leader>cb` | Normal | claude: browse sessions       |
+| `<leader>cr` | Normal | claude: restore session       |
+| `<leader>cw` | Visual | claude: new with selection    |
 
 ### In Claude Code Buffer
 
@@ -155,7 +155,7 @@ window = {
 ```lua
 require("claude-code").setup({
   -- Command to run Claude Code CLI
-  claude_code_cmd = "claude-code",
+  claude_code_cmd = "claude",
 
   -- Window configuration
   window = {
@@ -182,16 +182,16 @@ You can customize the keybindings in various ways:
 ```lua
 -- Basic keybindings without icons
 keys = {
-  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code" },
-  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session" },
-  { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection to Claude" },
+  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
+  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
+  { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "claude: send selection" },
 },
 
 -- Or create a Claude-themed group
 keys = {
   { "<leader>c", group = "claude" },
-  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code" },
-  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session" },
+  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
+  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
   -- ... other keybindings
 },
 ```
@@ -201,9 +201,9 @@ keys = {
 ```lua
 -- Add to your LazyVim plugin spec
 keys = {
-  { "<leader>ai", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude AI" },
-  { "<leader>an", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude session" },
-  { "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send to Claude" },
+  { "<leader>ai", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle claude code" },
+  { "<leader>an", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new claude code session" },
+  { "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "claude: send to claude code" },
 },
 ```
 
