@@ -111,28 +111,32 @@ end
 
 -- Create Claude Code buffer and window
 local function create_claude_buffer()
-	-- Create buffer
-	state.bufnr = vim.api.nvim_create_buf(false, true)
+	-- Check if command exists first
+	local cmd = state.config.claude_code_cmd
+	if vim.fn.executable(cmd) == 0 then
+		vim.notify(
+			"Command '" .. cmd .. "' not found. Please install Claude CLI and ensure it's in your PATH.",
+			vim.log.levels.ERROR
+		)
+		return
+	end
 
-	-- Set buffer options using modern API
-	vim.bo[state.bufnr].buftype = "terminal"
-	vim.bo[state.bufnr].swapfile = false
-	vim.api.nvim_buf_set_name(state.bufnr, "Claude Code")
-
-	-- Create window based on configuration
+	-- Create window first, then buffer
 	local win_config = get_window_config()
 
 	if win_config.type == "float" then
-		-- Create floating window
+		-- Create buffer for floating window
+		state.bufnr = vim.api.nvim_create_buf(false, true)
 		state.winnr = vim.api.nvim_open_win(state.bufnr, true, win_config)
 		vim.wo[state.winnr].winhl = "Normal:Normal,FloatBorder:FloatBorder"
 	elseif win_config.type == "tabnew" then
-		-- Create new tab
+		-- Create new tab and buffer
 		vim.cmd("tabnew")
 		state.winnr = vim.api.nvim_get_current_win()
+		state.bufnr = vim.api.nvim_create_buf(false, true)
 		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 	else
-		-- Create split window
+		-- Create split window first
 		local split_cmd = ""
 
 		if win_config.type == "vsplit" then
@@ -151,11 +155,20 @@ local function create_claude_buffer()
 
 		vim.cmd(split_cmd)
 		state.winnr = vim.api.nvim_get_current_win()
+
+		-- Create buffer and set it in the current window
+		state.bufnr = vim.api.nvim_create_buf(false, true)
 		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 	end
 
-	-- Start Claude Code in terminal
-	local cmd = state.config.claude_code_cmd
+	-- Set buffer name
+	vim.api.nvim_buf_set_name(state.bufnr, "Claude Code")
+
+	-- Set buffer options after the buffer is current in a window
+	vim.bo[state.bufnr].swapfile = false
+	vim.bo[state.bufnr].bufhidden = "wipe"
+
+	-- Start Claude Code in terminal (this will automatically set buftype)
 	state.term_job_id = vim.fn.termopen(cmd, {
 		on_exit = function(job_id, exit_code, event_type)
 			if state.config.save_session then
@@ -166,6 +179,15 @@ local function create_claude_buffer()
 			state.term_job_id = nil
 		end,
 	})
+
+	-- Check if termopen was successful
+	if state.term_job_id == -1 then
+		vim.notify(
+			"Failed to start " .. cmd .. ". Please check if the command is correct and executable.",
+			vim.log.levels.ERROR
+		)
+		return
+	end
 
 	-- Set up buffer keymaps
 	local opts = { buffer = state.bufnr, silent = true }
