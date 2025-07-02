@@ -40,13 +40,13 @@ return {
     "ClaudeCodeNewWithSelection" 
   },
   keys = {
-    { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code" },
-    { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session" },
-    { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection to Claude" },
-    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "Save Claude Code session" },
-    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "Update current session" },
-    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "Browse Claude Code sessions" },
-    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", mode = "v", desc = "New session with selection" },
+    { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code", icon = "🤖" },
+    { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session", icon = "✨" },
+    { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection to Claude", icon = "📤" },
+    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "Save Claude Code session", icon = "💾" },
+    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "Update current session", icon = "🔄" },
+    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "Browse Claude Code sessions", icon = "📚" },
+    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", mode = "v", desc = "New session with selection", icon = "🚀" },
   },
   config = function()
     require("claude-code").setup({
@@ -170,14 +170,35 @@ require("claude-code").setup({
 
 ## 🔧 Customization
 
+### Custom Icons
+
+The plugin uses emoji icons by default. You can customize them or use Nerd Font icons:
+
+```lua
+-- Using Nerd Font icons
+keys = {
+  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code", icon = "" },
+  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session", icon = "" },
+  { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection to Claude", icon = "" },
+},
+
+-- Or create a Claude-themed icon group
+keys = {
+  { "<leader>c", group = "claude", icon = "🤖" },
+  { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code" },
+  { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session" },
+  -- ... other keybindings
+},
+```
+
 ### Custom Keybindings
 
 ```lua
 -- Add to your LazyVim plugin spec
 keys = {
-  { "<leader>ai", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude AI" },
-  { "<leader>an", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude session" },
-  { "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send to Claude" },
+  { "<leader>ai", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude AI", icon = "🤖" },
+  { "<leader>an", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude session", icon = "✨" },
+  { "<leader>as", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send to Claude", icon = "📤" },
 },
 ```
 
