@@ -1,0 +1,54 @@
+# Vim/Neovim files
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Session files
+Session.vim
+.session
+.netrwhist
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Plugin specific
+claude-code-sessions/
+*.session
+
+# Development
+.vscode/
+.idea/
+*.iml
+
+# Testing
+tests/
+spec/
+
+# Documentation build
+doc/tags
+doc/tags-*
+
+# Lua bytecode
+*.luac
+
+# Runtime files
+.nvimrc
+.exrc
+
+# Backup files
+*~
+*.bak
+*.backup
