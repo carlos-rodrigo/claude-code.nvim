@@ -229,35 +229,39 @@ function M.setup(opts)
 	-- Create user commands
 	vim.api.nvim_create_user_command("ClaudeCode", function()
 		M.open()
-	end, { desc = "Open Claude Code" })
+	end, { desc = "claude: open claude code" })
 
 	vim.api.nvim_create_user_command("ClaudeCodeNew", function()
 		M.new_session()
-	end, { desc = "Start new Claude Code session" })
+	end, { desc = "claude: start new session" })
 
 	vim.api.nvim_create_user_command("ClaudeCodeToggle", function()
 		M.toggle()
-	end, { desc = "Toggle Claude Code window" })
+	end, { desc = "claude: toggle window" })
 
 	vim.api.nvim_create_user_command("ClaudeCodeSend", function(opts)
 		M.send_selection(opts.line1, opts.line2)
-	end, { desc = "Send selection to Claude Code", range = true })
+	end, { desc = "claude: send selection", range = true })
 
 	vim.api.nvim_create_user_command("ClaudeCodeNewWithSelection", function(opts)
 		M.new_session_with_selection(opts.line1, opts.line2)
-	end, { desc = "Start new Claude Code session with selection", range = true })
+	end, { desc = "claude: new session with selection", range = true })
 
 	vim.api.nvim_create_user_command("ClaudeCodeSessions", function()
 		M.browse_sessions()
-	end, { desc = "Browse Claude Code sessions" })
+	end, { desc = "claude: browse sessions" })
 
 	vim.api.nvim_create_user_command("ClaudeCodeSaveSession", function()
 		M.save_session_interactive()
-	end, { desc = "Save current Claude Code session with a name" })
+	end, { desc = "claude: save session with name" })
 
 	vim.api.nvim_create_user_command("ClaudeCodeUpdateSession", function()
 		M.update_current_session()
-	end, { desc = "Update current Claude Code session" })
+	end, { desc = "claude: update current session" })
+
+	vim.api.nvim_create_user_command("ClaudeCodeRestoreSession", function()
+		M.restore_session_interactive()
+	end, { desc = "claude: restore session from file" })
 end
 
 function M.open()
@@ -481,11 +485,26 @@ function M.browse_sessions()
 	end
 	
 	vim.ui.select(choices, {
-		prompt = "Select a Claude Code session to view:",
+		prompt = "Select a Claude Code session:",
 		format_item = function(item) return item end,
 	}, function(choice, idx)
 		if choice and idx then
-			M.load_session(sessions[idx].file)
+			local selected_session = sessions[idx]
+			-- Ask what to do with the selected session
+			vim.ui.select(
+				{"View session", "Restore session"},
+				{
+					prompt = "What would you like to do with: " .. selected_session.display_name,
+					format_item = function(item) return item end,
+				},
+				function(action)
+					if action == "View session" then
+						M.load_session(selected_session.file)
+					elseif action == "Restore session" then
+						M.restore_session(selected_session.file)
+					end
+				end
+			)
 		end
 	end)
 end
@@ -571,6 +590,72 @@ function M.save_session_interactive()
 			end
 		end)
 	end
+end
+
+function M.restore_session(session_file)
+	if not vim.fn.filereadable(session_file) then
+		vim.notify("Session file not found: " .. session_file, vim.log.levels.ERROR)
+		return
+	end
+	
+	-- Close current session if it exists
+	if state.term_job_id then
+		vim.fn.jobstop(state.term_job_id)
+	end
+	if state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr) then
+		vim.api.nvim_buf_delete(state.bufnr, { force = true })
+	end
+	
+	-- Reset state
+	state.bufnr = nil
+	state.winnr = nil
+	state.term_job_id = nil
+	state.session_file = nil
+	state.named_session = false
+	
+	-- Create new Claude buffer
+	create_claude_buffer()
+	
+	-- Wait for terminal to be ready, then send the session content
+	vim.defer_fn(function()
+		if state.term_job_id and state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr) then
+			-- Read session content and send it
+			local lines = vim.fn.readfile(session_file)
+			local content = table.concat(lines, "\n")
+			
+			-- Send the content to Claude Code to restore the context
+			vim.fn.chansend(state.term_job_id, "/resume\n")
+			vim.defer_fn(function()
+				vim.fn.chansend(state.term_job_id, content .. "\n")
+			end, 200)
+		end
+	end, 500)
+	
+	vim.notify("Session restored from: " .. vim.fn.fnamemodify(session_file, ":t"), vim.log.levels.INFO)
+end
+
+function M.restore_session_interactive()
+	local sessions = M.list_sessions()
+	
+	if #sessions == 0 then
+		vim.notify("No Claude Code sessions found to restore", vim.log.levels.INFO)
+		return
+	end
+	
+	-- Create selection menu
+	local choices = {}
+	for i, session in ipairs(sessions) do
+		table.insert(choices, string.format("%d. %s", i, session.display_name))
+	end
+	
+	vim.ui.select(choices, {
+		prompt = "Select a Claude Code session to restore:",
+		format_item = function(item) return item end,
+	}, function(choice, idx)
+		if choice and idx then
+			M.restore_session(sessions[idx].file)
+		end
+	end)
 end
 
 return M
