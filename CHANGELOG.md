@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Named Session Management**: Save sessions with custom names using `:ClaudeCodeSaveSession`
+- **Session Browsing**: Browse and view previous sessions with `:ClaudeCodeSessions`
+- **Session Updates**: Update current named session with `:ClaudeCodeUpdateSession`
+- **Start with Selection**: Create new sessions with selected text as initial prompt using `:ClaudeCodeNewWithSelection`
+- **Smart Session Handling**: Named sessions are preserved and updated on exit instead of creating duplicates
+
+### Enhanced
+
+- **Session Management**: Improved session workflow with options to update existing or create new sessions
+- **User Experience**: Added interactive prompts for session management operations
+- **Keybindings**: Added new keybindings for session management features
+
+### Commands Added
+
+- `:ClaudeCodeSaveSession` - Save current session with custom name
+- `:ClaudeCodeUpdateSession` - Update the current named session
+- `:ClaudeCodeSessions` - Browse and view previous Claude Code sessions
+- `:ClaudeCodeNewWithSelection` - Start new session with selected text as prompt
+
+### Keybindings Added
+
+- `<leader>cS` - Save Claude Code session
+- `<leader>cu` - Update current session
+- `<leader>cb` - Browse Claude Code sessions
+- `<leader>cw` - New session with selection (visual mode)
+
 ## [1.0.0] - 2025-07-02
 
 ### Added

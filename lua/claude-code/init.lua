@@ -8,9 +8,7 @@ local M = {}
 local default_config = {
 	claude_code_cmd = "claude",
 	window = {
-		type = "vsplit", -- "split", "vsplit", "tabnew", "float"
-		position = "right", -- for splits: "right", "left", "top", "bottom"
-		size = 80, -- for splits: number of lines/columns, for float: percentage (0.4)
+		type = "tabnew", -- "split", "vsplit", "tabnew", "float"
 	},
 	auto_scroll = true,
 	save_session = true,
@@ -24,6 +22,7 @@ local state = {
 	term_job_id = nil,
 	config = {},
 	session_file = nil,
+	named_session = false, -- Track if user saved with custom name
 }
 
 -- Utility functions
@@ -172,9 +171,15 @@ local function create_claude_buffer()
 	state.term_job_id = vim.fn.termopen(cmd, {
 		on_exit = function(job_id, exit_code, event_type)
 			if state.config.save_session then
-				-- Save session when Claude Code exits
-				local lines = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
-				vim.fn.writefile(lines, get_session_file())
+				-- Only save if not already saved with a custom name
+				if not state.named_session then
+					local lines = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
+					vim.fn.writefile(lines, get_session_file())
+				else
+					-- Update the existing named session file
+					local lines = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
+					vim.fn.writefile(lines, state.session_file)
+				end
 			end
 			state.term_job_id = nil
 		end,
@@ -237,6 +242,22 @@ function M.setup(opts)
 	vim.api.nvim_create_user_command("ClaudeCodeSend", function(opts)
 		M.send_selection(opts.line1, opts.line2)
 	end, { desc = "Send selection to Claude Code", range = true })
+
+	vim.api.nvim_create_user_command("ClaudeCodeNewWithSelection", function(opts)
+		M.new_session_with_selection(opts.line1, opts.line2)
+	end, { desc = "Start new Claude Code session with selection", range = true })
+
+	vim.api.nvim_create_user_command("ClaudeCodeSessions", function()
+		M.browse_sessions()
+	end, { desc = "Browse Claude Code sessions" })
+
+	vim.api.nvim_create_user_command("ClaudeCodeSaveSession", function()
+		M.save_session_interactive()
+	end, { desc = "Save current Claude Code session with a name" })
+
+	vim.api.nvim_create_user_command("ClaudeCodeUpdateSession", function()
+		M.update_current_session()
+	end, { desc = "Update current Claude Code session" })
 end
 
 function M.open()
@@ -323,6 +344,7 @@ function M.new_session()
 	state.winnr = nil
 	state.term_job_id = nil
 	state.session_file = nil
+	state.named_session = false
 
 	-- Create new session
 	M.open()
@@ -358,6 +380,196 @@ function M.send_text(text)
 
 	if state.term_job_id then
 		vim.fn.chansend(state.term_job_id, text .. "\n")
+	end
+end
+
+function M.new_session_with_selection(start_line, end_line)
+	-- Get current buffer and selection
+	local current_buf = vim.api.nvim_get_current_buf()
+	local lines = vim.api.nvim_buf_get_lines(current_buf, start_line - 1, end_line, false)
+	local text = table.concat(lines, "\n")
+	
+	-- Start new session
+	M.new_session()
+	
+	-- Wait a bit for the terminal to be ready
+	vim.defer_fn(function()
+		if state.term_job_id then
+			vim.fn.chansend(state.term_job_id, text .. "\n")
+		end
+	end, 100)
+end
+
+function M.list_sessions()
+	create_session_dir()
+	local session_files = vim.fn.glob(state.config.session_dir .. "session_*.txt", false, true)
+	
+	-- Sort sessions by date (newest first)
+	table.sort(session_files, function(a, b) return a > b end)
+	
+	local sessions = {}
+	for _, file in ipairs(session_files) do
+		local basename = vim.fn.fnamemodify(file, ":t")
+		local timestamp, custom_name = basename:match("session_(%d+_%d+)_?(.*)%.txt")
+		if timestamp then
+			-- Format timestamp for display
+			local year, month, day, hour, min, sec = timestamp:match("(%d%d%d%d)(%d%d)(%d%d)_(%d%d)(%d%d)(%d%d)")
+			local display_name = string.format("%s-%s-%s %s:%s:%s", year, month, day, hour, min, sec)
+			
+			-- Add custom name if present
+			if custom_name and custom_name ~= "" then
+				display_name = display_name .. " - " .. custom_name:gsub("_", " ")
+			end
+			
+			table.insert(sessions, {
+				file = file,
+				timestamp = timestamp,
+				display_name = display_name
+			})
+		end
+	end
+	
+	return sessions
+end
+
+function M.load_session(session_file)
+	if not vim.fn.filereadable(session_file) then
+		vim.notify("Session file not found: " .. session_file, vim.log.levels.ERROR)
+		return
+	end
+	
+	-- Create a new buffer for viewing the session
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(buf, "Claude Code Session: " .. vim.fn.fnamemodify(session_file, ":t"))
+	
+	-- Read session content
+	local lines = vim.fn.readfile(session_file)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	
+	-- Set buffer options
+	vim.bo[buf].modifiable = false
+	vim.bo[buf].buftype = "nofile"
+	vim.bo[buf].swapfile = false
+	
+	-- Open in a new window
+	local win_config = get_window_config()
+	if win_config.type == "float" then
+		vim.api.nvim_open_win(buf, true, win_config)
+	elseif win_config.type == "tabnew" then
+		vim.cmd("tabnew")
+		vim.api.nvim_win_set_buf(0, buf)
+	else
+		-- Use split
+		local split_cmd = win_config.type == "vsplit" and "vsplit" or "split"
+		vim.cmd(split_cmd)
+		vim.api.nvim_win_set_buf(0, buf)
+	end
+end
+
+function M.browse_sessions()
+	local sessions = M.list_sessions()
+	
+	if #sessions == 0 then
+		vim.notify("No Claude Code sessions found", vim.log.levels.INFO)
+		return
+	end
+	
+	-- Create selection menu
+	local choices = {}
+	for i, session in ipairs(sessions) do
+		table.insert(choices, string.format("%d. %s", i, session.display_name))
+	end
+	
+	vim.ui.select(choices, {
+		prompt = "Select a Claude Code session to view:",
+		format_item = function(item) return item end,
+	}, function(choice, idx)
+		if choice and idx then
+			M.load_session(sessions[idx].file)
+		end
+	end)
+end
+
+function M.save_session_with_name(name)
+	if not state.bufnr or not vim.api.nvim_buf_is_valid(state.bufnr) then
+		vim.notify("No active Claude Code session to save", vim.log.levels.WARN)
+		return
+	end
+	
+	create_session_dir()
+	
+	-- Sanitize the name for filename
+	local safe_name = name:gsub("[^%w%s%-_]", ""):gsub("%s+", "_")
+	local timestamp = os.date("%Y%m%d_%H%M%S")
+	local filename = string.format("session_%s_%s.txt", timestamp, safe_name)
+	local filepath = state.config.session_dir .. filename
+	
+	-- Get buffer content
+	local lines = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
+	
+	-- Save to file
+	vim.fn.writefile(lines, filepath)
+	vim.notify("Session saved as: " .. filename, vim.log.levels.INFO)
+	
+	-- Mark this session as named and set the session file
+	state.named_session = true
+	state.session_file = filepath
+end
+
+function M.update_current_session()
+	if not state.bufnr or not vim.api.nvim_buf_is_valid(state.bufnr) then
+		vim.notify("No active Claude Code session to update", vim.log.levels.WARN)
+		return
+	end
+	
+	if not state.named_session or not state.session_file then
+		vim.notify("No named session to update. Use :ClaudeCodeSaveSession first", vim.log.levels.WARN)
+		return
+	end
+	
+	-- Update existing file
+	local lines = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
+	vim.fn.writefile(lines, state.session_file)
+	local current_name = vim.fn.fnamemodify(state.session_file, ":t")
+	vim.notify("Session updated: " .. current_name, vim.log.levels.INFO)
+end
+
+function M.save_session_interactive()
+	-- If already has a named session, ask if they want to update or create new
+	if state.named_session and state.session_file then
+		local current_name = vim.fn.fnamemodify(state.session_file, ":t")
+		vim.ui.select(
+			{"Update current session", "Create new session"},
+			{
+				prompt = "Session already saved as: " .. current_name,
+				format_item = function(item) return item end,
+			},
+			function(choice)
+				if choice == "Update current session" then
+					M.update_current_session()
+				elseif choice == "Create new session" then
+					-- Ask for new name
+					vim.ui.input({
+						prompt = "Enter new session name: ",
+						default = "",
+					}, function(input)
+						if input and input ~= "" then
+							M.save_session_with_name(input)
+						end
+					end)
+				end
+			end
+		)
+	else
+		-- No existing named session, just ask for name
+		vim.ui.input({
+			prompt = "Enter session name: ",
+			default = "",
+		}, function(input)
+			if input and input ~= "" then
+				M.save_session_with_name(input)
+			end
+		end)
 	end
 end
 

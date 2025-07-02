@@ -8,6 +8,9 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **Flexible window management** - Choose between splits, tabs, or floating windows
 - **Visual selection sending** - Send selected code directly to Claude with a keymap
 - **Session management** - Automatically saves sessions and supports multiple concurrent sessions
+- **Named session saving** - Save sessions with custom names and manage them easily
+- **Session browsing** - Browse and view previous Claude Code conversations
+- **Start with selection** - Create new sessions with selected text as initial prompt
 - **Auto-scrolling** - Keeps the latest Claude responses visible
 - **LazyVim integration** - Follows LazyVim conventions with lazy loading
 - **Project context** - Send your project structure to Claude for better assistance
@@ -27,11 +30,23 @@ Add this to your LazyVim plugins directory (`~/.config/nvim/lua/plugins/claude-c
 ```lua
 return {
   "carlos-rodrigo/claude-code.nvim",
-  cmd = { "ClaudeCode", "ClaudeCodeNew", "ClaudeCodeToggle" },
+  cmd = { 
+    "ClaudeCode", 
+    "ClaudeCodeNew", 
+    "ClaudeCodeToggle", 
+    "ClaudeCodeSessions", 
+    "ClaudeCodeSaveSession", 
+    "ClaudeCodeUpdateSession",
+    "ClaudeCodeNewWithSelection" 
+  },
   keys = {
     { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "Toggle Claude Code" },
     { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "New Claude Code session" },
     { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection to Claude" },
+    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "Save Claude Code session" },
+    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "Update current session" },
+    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "Browse Claude Code sessions" },
+    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", mode = "v", desc = "New session with selection" },
   },
   config = function()
     require("claude-code").setup({
@@ -67,12 +82,16 @@ require("claude-code").setup()
 
 ### Commands
 
-| Command             | Description                                |
-| ------------------- | ------------------------------------------ |
-| `:ClaudeCode`       | Open Claude Code buffer                    |
-| `:ClaudeCodeNew`    | Start a new Claude Code session            |
-| `:ClaudeCodeToggle` | Toggle Claude Code window visibility       |
-| `:ClaudeCodeSend`   | Send selected text to Claude (visual mode) |
+| Command                      | Description                                        |
+| ---------------------------- | -------------------------------------------------- |
+| `:ClaudeCode`                | Open Claude Code buffer                            |
+| `:ClaudeCodeNew`             | Start a new Claude Code session                   |
+| `:ClaudeCodeToggle`          | Toggle Claude Code window visibility              |
+| `:ClaudeCodeSend`            | Send selected text to Claude (visual mode)        |
+| `:ClaudeCodeSaveSession`     | Save current session with a custom name           |
+| `:ClaudeCodeUpdateSession`   | Update the current named session                  |
+| `:ClaudeCodeSessions`        | Browse and view previous Claude Code sessions     |
+| `:ClaudeCodeNewWithSelection`| Start new session with selected text as prompt    |
 
 ### Default Keybindings
 
@@ -81,6 +100,10 @@ require("claude-code").setup()
 | `<leader>cc` | Normal | Toggle Claude Code window     |
 | `<leader>cn` | Normal | Start new Claude Code session |
 | `<leader>cs` | Visual | Send selection to Claude      |
+| `<leader>cS` | Normal | Save Claude Code session      |
+| `<leader>cu` | Normal | Update current session        |
+| `<leader>cb` | Normal | Browse Claude Code sessions   |
+| `<leader>cw` | Visual | New session with selection    |
 
 ### In Claude Code Buffer
 
