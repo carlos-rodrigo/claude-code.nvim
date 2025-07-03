@@ -172,9 +172,9 @@ local function create_claude_buffer()
 			vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 		end
 	elseif win_config.type == "buffer" then
-		-- Use current window and create new buffer
+		-- Create new buffer and switch to it (like :enew)
 		state.winnr = vim.api.nvim_get_current_win()
-		state.bufnr = vim.api.nvim_create_buf(false, true)
+		state.bufnr = vim.api.nvim_create_buf(true, false) -- listed=true, scratch=false
 		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 	else
 		-- Create split window first
@@ -362,7 +362,7 @@ function M.open()
 					vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 				end
 			elseif win_config.type == "buffer" then
-				-- Use current window for existing buffer
+				-- Switch to existing buffer in current window
 				state.winnr = vim.api.nvim_get_current_win()
 				vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 			else
