@@ -8,6 +8,7 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **Flexible window management** - Choose between splits, tabs, or floating windows
 - **Visual selection sending** - Send selected code directly to Claude with a keymap
 - **Session management** - Automatically saves sessions and supports multiple concurrent sessions
+- **Auto-save on focus loss** - Sessions are automatically saved when you switch buffers or lose focus
 - **Named session saving** - Save sessions with custom names and manage them easily
 - **Session browsing** - Browse and view previous Claude Code conversations
 - **Session restoration** - Restore saved sessions as new active sessions to continue conversations
@@ -53,6 +54,8 @@ return {
       },
       auto_scroll = true,
       save_session = true,
+      auto_save_session = true,    -- Auto-save on focus loss
+      auto_save_notify = true,     -- Show notifications when auto-saving
       session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
       -- Disable built-in keybindings since we're using LazyVim keys spec
       keybindings = false,
@@ -86,6 +89,8 @@ return {
       },
       auto_scroll = true,
       save_session = true,
+      auto_save_session = true,    -- Auto-save on focus loss
+      auto_save_notify = true,     -- Show notifications when auto-saving
       session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
       -- Default keybindings (can be customized)
       keybindings = {
@@ -218,6 +223,8 @@ require("claude-code").setup({
 
   -- Save sessions to files
   save_session = true,
+  auto_save_session = true,  -- Automatically save sessions on focus loss
+  auto_save_notify = true,   -- Show notification when auto-saving sessions
   session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
 
   -- Default keybindings (set to false to disable, or change keys)
