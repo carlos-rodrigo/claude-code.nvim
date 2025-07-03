@@ -28,6 +28,8 @@ local default_config = {
 	},
 	auto_scroll = true,
 	save_session = true,
+	auto_save_session = true, -- Automatically save sessions on focus loss
+	auto_save_notify = true, -- Show notification when auto-saving sessions
 	session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
 	-- Default keybindings
 	keybindings = {
@@ -67,6 +69,27 @@ local function get_session_file()
 		state.session_file = state.config.session_dir .. "session_" .. timestamp .. ".txt"
 	end
 	return state.session_file
+end
+
+-- Auto-save session to file
+local function auto_save_session()
+	if state.config.save_session and state.config.auto_save_session and state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr) then
+		local lines = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
+		local session_file
+		if not state.named_session then
+			session_file = get_session_file()
+			vim.fn.writefile(lines, session_file)
+		else
+			session_file = state.session_file
+			vim.fn.writefile(lines, session_file)
+		end
+		
+		-- Show a brief notification if enabled
+		if state.config.auto_save_notify then
+			local filename = vim.fn.fnamemodify(session_file, ":t")
+			vim.notify("Session auto-saved: " .. filename, vim.log.levels.INFO, { timeout = 2000 })
+		end
+	end
 end
 
 local function get_window_config()
@@ -269,6 +292,14 @@ local function create_claude_buffer()
 		})
 	end
 
+	-- Auto-save session on focus loss
+	if state.config.save_session and state.config.auto_save_session then
+		vim.api.nvim_create_autocmd({"FocusLost", "BufLeave"}, {
+			buffer = state.bufnr,
+			callback = auto_save_session,
+		})
+	end
+
 	-- Enter terminal mode
 	vim.cmd("startinsert")
 end
@@ -345,6 +376,10 @@ function M.setup(opts)
 end
 
 function M.open()
+	-- Always create a new session file on each open
+	state.session_file = nil
+	state.named_session = false
+	
 	if state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr) then
 		if state.winnr and vim.api.nvim_win_is_valid(state.winnr) then
 			vim.api.nvim_set_current_win(state.winnr)
