@@ -4,6 +4,22 @@
 
 local M = {}
 
+-- Helper function to find existing Claude Code tab
+local function find_claude_tab()
+	local tabs = vim.api.nvim_list_tabpages()
+	for _, tab in ipairs(tabs) do
+		local wins = vim.api.nvim_tabpage_list_wins(tab)
+		for _, win in ipairs(wins) do
+			local buf = vim.api.nvim_win_get_buf(win)
+			local buf_name = vim.api.nvim_buf_get_name(buf)
+			if buf_name:match("claude%-code") or (state.bufnr and buf == state.bufnr) then
+				return tab, win
+			end
+		end
+	end
+	return nil, nil
+end
+
 -- Default configuration
 local default_config = {
 	claude_code_cmd = "claude",
@@ -140,11 +156,21 @@ local function create_claude_buffer()
 		state.winnr = vim.api.nvim_open_win(state.bufnr, true, win_config)
 		vim.wo[state.winnr].winhl = "Normal:Normal,FloatBorder:FloatBorder"
 	elseif win_config.type == "tabnew" then
-		-- Create new tab and buffer
-		vim.cmd("tabnew")
-		state.winnr = vim.api.nvim_get_current_win()
-		state.bufnr = vim.api.nvim_create_buf(false, true)
-		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+		-- Check if Claude Code tab already exists
+		local existing_tab, existing_win = find_claude_tab()
+		if existing_tab then
+			-- Switch to existing tab
+			vim.api.nvim_set_current_tabpage(existing_tab)
+			vim.api.nvim_set_current_win(existing_win)
+			state.winnr = existing_win
+			state.bufnr = vim.api.nvim_win_get_buf(existing_win)
+		else
+			-- Create new tab and buffer
+			vim.cmd("tabnew")
+			state.winnr = vim.api.nvim_get_current_win()
+			state.bufnr = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+		end
 	elseif win_config.type == "buffer" then
 		-- Use current window and create new buffer
 		state.winnr = vim.api.nvim_get_current_win()
@@ -322,9 +348,19 @@ function M.open()
 				state.winnr = vim.api.nvim_open_win(state.bufnr, true, win_config)
 				vim.wo[state.winnr].winhl = "Normal:Normal,FloatBorder:FloatBorder"
 			elseif win_config.type == "tabnew" then
-				vim.cmd("tabnew")
-				state.winnr = vim.api.nvim_get_current_win()
-				vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+				-- Check if Claude Code tab already exists
+				local existing_tab, existing_win = find_claude_tab()
+				if existing_tab then
+					-- Switch to existing tab
+					vim.api.nvim_set_current_tabpage(existing_tab)
+					vim.api.nvim_set_current_win(existing_win)
+					state.winnr = existing_win
+				else
+					-- Create new tab
+					vim.cmd("tabnew")
+					state.winnr = vim.api.nvim_get_current_win()
+					vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+				end
 			elseif win_config.type == "buffer" then
 				-- Use current window for existing buffer
 				state.winnr = vim.api.nvim_get_current_win()
@@ -510,8 +546,18 @@ function M.load_session(session_file)
 	if win_config.type == "float" then
 		vim.api.nvim_open_win(buf, true, win_config)
 	elseif win_config.type == "tabnew" then
-		vim.cmd("tabnew")
-		vim.api.nvim_win_set_buf(0, buf)
+		-- Check if Claude Code tab already exists
+		local existing_tab, existing_win = find_claude_tab()
+		if existing_tab then
+			-- Switch to existing tab and load buffer
+			vim.api.nvim_set_current_tabpage(existing_tab)
+			vim.api.nvim_set_current_win(existing_win)
+			vim.api.nvim_win_set_buf(existing_win, buf)
+		else
+			-- Create new tab and load buffer
+			vim.cmd("tabnew")
+			vim.api.nvim_win_set_buf(0, buf)
+		end
 	elseif win_config.type == "buffer" then
 		-- Use current window
 		vim.api.nvim_win_set_buf(0, buf)
