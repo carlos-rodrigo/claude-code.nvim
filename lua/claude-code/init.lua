@@ -24,7 +24,7 @@ end
 local default_config = {
 	claude_code_cmd = "claude",
 	window = {
-		type = "buffer", -- "split", "vsplit", "tabnew", "buffer", "float"
+		type = "buffer", -- "split", "vsplit", "tabnew", "buffer", "newbuffer", "float"
 	},
 	auto_scroll = true,
 	save_session = true,
@@ -176,6 +176,11 @@ local function create_claude_buffer()
 		state.winnr = vim.api.nvim_get_current_win()
 		state.bufnr = vim.api.nvim_create_buf(true, false) -- listed=true, scratch=false
 		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+	elseif win_config.type == "newbuffer" then
+		-- Create new buffer in new window (like :enew | only)
+		vim.cmd("enew")
+		state.winnr = vim.api.nvim_get_current_win()
+		state.bufnr = vim.api.nvim_get_current_buf()
 	else
 		-- Create split window first
 		local split_cmd = ""
@@ -365,6 +370,10 @@ function M.open()
 				-- Switch to existing buffer in current window
 				state.winnr = vim.api.nvim_get_current_win()
 				vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+			elseif win_config.type == "newbuffer" then
+				-- Switch to existing buffer (like :buffer command)
+				vim.cmd("buffer " .. state.bufnr)
+				state.winnr = vim.api.nvim_get_current_win()
 			else
 				-- Create split for existing buffer
 				local split_cmd = ""
@@ -560,6 +569,10 @@ function M.load_session(session_file)
 		end
 	elseif win_config.type == "buffer" then
 		-- Use current window
+		vim.api.nvim_win_set_buf(0, buf)
+	elseif win_config.type == "newbuffer" then
+		-- Create new buffer and switch to it
+		vim.cmd("enew")
 		vim.api.nvim_win_set_buf(0, buf)
 	else
 		-- Use split
