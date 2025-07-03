@@ -217,7 +217,7 @@ local function create_claude_buffer()
 	-- Start Claude Code in terminal (this will automatically set buftype)
 	state.term_job_id = vim.fn.termopen(cmd, {
 		on_exit = function(job_id, exit_code, event_type)
-			if state.config.save_session then
+			if state.config.save_session and vim.api.nvim_buf_is_valid(state.bufnr) then
 				-- Only save if not already saved with a custom name
 				if not state.named_session then
 					local lines = vim.api.nvim_buf_get_lines(state.bufnr, 0, -1, false)
