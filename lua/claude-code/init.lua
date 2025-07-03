@@ -217,6 +217,22 @@ local function create_claude_buffer()
 		M.close()
 	end, opts)
 
+	-- Add tab navigation keybindings for tabnew mode
+	local win_config = get_window_config()
+	if win_config.type == "tabnew" then
+		-- Tab navigation from terminal mode
+		vim.keymap.set("t", "<C-PageDown>", "<C-\\><C-n>:tabnext<CR>i", opts)
+		vim.keymap.set("t", "<C-PageUp>", "<C-\\><C-n>:tabprevious<CR>i", opts)
+		vim.keymap.set("t", "<A-l>", "<C-\\><C-n>:tabnext<CR>i", opts)
+		vim.keymap.set("t", "<A-h>", "<C-\\><C-n>:tabprevious<CR>i", opts)
+		
+		-- Tab navigation in normal mode (when you press Esc)
+		vim.keymap.set("n", "<PageDown>", ":tabnext<CR>", opts)
+		vim.keymap.set("n", "<PageUp>", ":tabprevious<CR>", opts)
+		vim.keymap.set("n", "<A-l>", ":tabnext<CR>", opts)
+		vim.keymap.set("n", "<A-h>", ":tabprevious<CR>", opts)
+	end
+
 	-- Auto-scroll to bottom if enabled
 	if state.config.auto_scroll then
 		vim.api.nvim_create_autocmd("TermResponse", {

@@ -28,6 +28,41 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 
 Add this to your LazyVim plugins directory (`~/.config/nvim/lua/plugins/claude-code.lua`):
 
+#### Option 1: Full LazyVim Integration (Recommended)
+
+```lua
+return {
+  "carlos-rodrigo/claude-code.nvim",
+  keys = {
+    { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
+    { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
+    { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", desc = "claude: send selection", mode = "v" },
+    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "claude: save session" },
+    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "claude: update session" },
+    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "claude: browse sessions" },
+    { "<leader>cr", "<cmd>ClaudeCodeRestoreSession<cr>", desc = "claude: restore session" },
+    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", desc = "claude: new with selection", mode = "v" },
+  },
+  config = function()
+    require("claude-code").setup({
+      claude_code_cmd = "claude",
+      window = {
+        type = "vsplit",        -- "split", "vsplit", "tabnew", "float"
+        position = "right",     -- "right", "left", "top", "bottom"
+        size = 80,             -- columns for vsplit, lines for split
+      },
+      auto_scroll = true,
+      save_session = true,
+      session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
+      -- Disable built-in keybindings since we're using LazyVim keys spec
+      keybindings = false,
+    })
+  end,
+}
+```
+
+#### Option 2: Command-based Loading
+
 ```lua
 return {
   "carlos-rodrigo/claude-code.nvim",
@@ -118,6 +153,19 @@ require("claude-code").setup()
 | `q`     | Normal   | Close the window |
 | `<Esc>` | Normal   | Close the window |
 | `<C-q>` | Terminal | Close the window |
+
+### Tab Navigation (tabnew mode only)
+
+| Key            | Mode     | Action           |
+| -------------- | -------- | ---------------- |
+| `<C-PageDown>` | Terminal | Next tab         |
+| `<C-PageUp>`   | Terminal | Previous tab     |
+| `<A-l>`        | Terminal | Next tab         |
+| `<A-h>`        | Terminal | Previous tab     |
+| `<PageDown>`   | Normal   | Next tab         |
+| `<PageUp>`     | Normal   | Previous tab     |
+| `<A-l>`        | Normal   | Next tab         |
+| `<A-h>`        | Normal   | Previous tab     |
 
 ## ⚙️ Configuration
 
