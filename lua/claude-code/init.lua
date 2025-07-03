@@ -8,7 +8,7 @@ local M = {}
 local default_config = {
 	claude_code_cmd = "claude",
 	window = {
-		type = "tabnew", -- "split", "vsplit", "tabnew", "float"
+		type = "buffer", -- "split", "vsplit", "tabnew", "buffer", "float"
 	},
 	auto_scroll = true,
 	save_session = true,
@@ -142,6 +142,11 @@ local function create_claude_buffer()
 	elseif win_config.type == "tabnew" then
 		-- Create new tab and buffer
 		vim.cmd("tabnew")
+		state.winnr = vim.api.nvim_get_current_win()
+		state.bufnr = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+	elseif win_config.type == "buffer" then
+		-- Use current window and create new buffer
 		state.winnr = vim.api.nvim_get_current_win()
 		state.bufnr = vim.api.nvim_create_buf(false, true)
 		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
@@ -318,6 +323,10 @@ function M.open()
 				vim.wo[state.winnr].winhl = "Normal:Normal,FloatBorder:FloatBorder"
 			elseif win_config.type == "tabnew" then
 				vim.cmd("tabnew")
+				state.winnr = vim.api.nvim_get_current_win()
+				vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
+			elseif win_config.type == "buffer" then
+				-- Use current window for existing buffer
 				state.winnr = vim.api.nvim_get_current_win()
 				vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 			else
@@ -502,6 +511,9 @@ function M.load_session(session_file)
 		vim.api.nvim_open_win(buf, true, win_config)
 	elseif win_config.type == "tabnew" then
 		vim.cmd("tabnew")
+		vim.api.nvim_win_set_buf(0, buf)
+	elseif win_config.type == "buffer" then
+		-- Use current window
 		vim.api.nvim_win_set_buf(0, buf)
 	else
 		-- Use split
