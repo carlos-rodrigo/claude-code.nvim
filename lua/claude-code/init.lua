@@ -212,7 +212,10 @@ local function create_claude_buffer()
 
 	-- Set buffer options after the buffer is current in a window
 	vim.bo[state.bufnr].swapfile = false
-	vim.bo[state.bufnr].bufhidden = "wipe"
+	-- Only wipe buffer on hide for temporary window types
+	if win_config.type ~= "buffer" and win_config.type ~= "newbuffer" then
+		vim.bo[state.bufnr].bufhidden = "wipe"
+	end
 
 	-- Start Claude Code in terminal (this will automatically set buftype)
 	state.term_job_id = vim.fn.termopen(cmd, {
