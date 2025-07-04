@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2025-07-04
 
 ### Added
 
@@ -14,12 +14,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Session Updates**: Update current named session with `:ClaudeCodeUpdateSession`
 - **Start with Selection**: Create new sessions with selected text as initial prompt using `:ClaudeCodeNewWithSelection`
 - **Smart Session Handling**: Named sessions are preserved and updated on exit instead of creating duplicates
+- **Terminal Mode Navigation**: Press `<Esc>` in terminal mode to exit to normal mode for vim navigation
 
 ### Enhanced
 
 - **Session Management**: Improved session workflow with options to update existing or create new sessions
 - **User Experience**: Added interactive prompts for session management operations
 - **Keybindings**: Added new keybindings for session management features
+- **Session Persistence**: Sessions now persist when switching tabs/buffers with proper buffer management
+
+### Fixed
+
+- **Buffer Management**: Fixed empty `[No Name]` buffers being created when toggling Claude Code
+- **Window Closing**: Fixed "Cannot close last window" error when closing Claude Code
+- **State Initialization**: Fixed "attempt to index global 'state' (a nil value)" error on startup
+- **Treesitter Errors**: Disabled treesitter and render-markdown for terminal buffers to prevent decoration errors
+
+### Technical Improvements
+
+- **Simplified Architecture**: Rewrote core functionality using Neovim's built-in `:terminal` command
+- **Better Buffer Tracking**: Terminal buffers are now tracked by name pattern (`term://.*claude$`)
+- **Cleaner Window Management**: Uses `tab sb` and chained commands to avoid creating empty buffers
 
 ### Commands Added
 
@@ -34,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `<leader>cu` - Update current session
 - `<leader>cb` - Browse Claude Code sessions
 - `<leader>cw` - New session with selection (visual mode)
+- `<Esc>` - Exit terminal mode to normal mode (in Claude Code buffer)
 
 ## [1.0.0] - 2025-07-02
 

@@ -7,6 +7,7 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **Buffer-based integration** - Works as regular Neovim buffers with splits/tabs
 - **Flexible window management** - Choose between splits, tabs, or floating windows
 - **Visual selection sending** - Send selected code directly to Claude with a keymap
+- **Session persistence** - Keep your Claude conversation active while navigating files
 - **Session management** - Automatically saves sessions and supports multiple concurrent sessions
 - **Auto-save on focus loss** - Sessions are automatically saved when you switch buffers or lose focus
 - **Named session saving** - Save sessions with custom names and manage them easily
@@ -16,6 +17,7 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **Auto-scrolling** - Keeps the latest Claude responses visible
 - **LazyVim integration** - Follows LazyVim conventions with lazy loading
 - **Project context** - Send your project structure to Claude for better assistance
+- **Terminal mode navigation** - Use Esc to exit terminal mode and navigate with vim motions
 
 ## 📦 Installation
 
@@ -153,11 +155,13 @@ require("claude-code").setup()
 
 ### In Claude Code Buffer
 
-| Key     | Mode     | Action           |
-| ------- | -------- | ---------------- |
-| `q`     | Normal   | Close the window |
-| `<Esc>` | Normal   | Close the window |
-| `<C-q>` | Terminal | Close the window |
+| Key     | Mode     | Action                      |
+| ------- | -------- | --------------------------- |
+| `q`     | Normal   | Close the window            |
+| `<Esc>` | Normal   | Close the window            |
+| `<Esc>` | Terminal | Exit to normal mode         |
+| `<C-q>` | Terminal | Close the window            |
+| `i`     | Normal   | Enter terminal (insert) mode|
 
 ### Tab Navigation (tabnew mode only)
 
