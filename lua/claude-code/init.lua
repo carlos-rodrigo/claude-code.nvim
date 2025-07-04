@@ -24,7 +24,7 @@ end
 local default_config = {
 	claude_code_cmd = "claude",
 	window = {
-		type = "buffer", -- "split", "vsplit", "tabnew", "buffer", "newbuffer", "float"
+		type = "tabnew", -- "split", "vsplit", "tabnew", "float"
 	},
 	auto_scroll = true,
 	save_session = true,
@@ -194,16 +194,6 @@ local function create_claude_buffer()
 			state.bufnr = vim.api.nvim_create_buf(false, true)
 			vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 		end
-	elseif win_config.type == "buffer" then
-		-- Create new buffer and switch to it (like :enew)
-		state.winnr = vim.api.nvim_get_current_win()
-		state.bufnr = vim.api.nvim_create_buf(true, false) -- listed=true, scratch=false
-		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
-	elseif win_config.type == "newbuffer" then
-		-- Create new buffer using bufadd
-		state.bufnr = vim.fn.bufadd("")
-		state.winnr = vim.api.nvim_get_current_win()
-		vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 	else
 		-- Create split window first
 		local split_cmd = ""
@@ -235,10 +225,8 @@ local function create_claude_buffer()
 
 	-- Set buffer options after the buffer is current in a window
 	vim.bo[state.bufnr].swapfile = false
-	-- Only wipe buffer on hide for temporary window types
-	if win_config.type ~= "buffer" and win_config.type ~= "newbuffer" then
-		vim.bo[state.bufnr].bufhidden = "wipe"
-	end
+	-- Wipe buffer on hide
+	vim.bo[state.bufnr].bufhidden = "wipe"
 
 	-- Start Claude Code in terminal (this will automatically set buftype)
 	state.term_job_id = vim.fn.termopen(cmd, {
@@ -404,14 +392,6 @@ function M.open()
 					state.winnr = vim.api.nvim_get_current_win()
 					vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 				end
-			elseif win_config.type == "buffer" then
-				-- Switch to existing buffer in current window
-				state.winnr = vim.api.nvim_get_current_win()
-				vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
-			elseif win_config.type == "newbuffer" then
-				-- Switch to existing buffer in current window
-				state.winnr = vim.api.nvim_get_current_win()
-				vim.api.nvim_win_set_buf(state.winnr, state.bufnr)
 			else
 				-- Create split for existing buffer
 				local split_cmd = ""
@@ -605,12 +585,6 @@ function M.load_session(session_file)
 			vim.cmd("tabnew")
 			vim.api.nvim_win_set_buf(0, buf)
 		end
-	elseif win_config.type == "buffer" then
-		-- Use current window
-		vim.api.nvim_win_set_buf(0, buf)
-	elseif win_config.type == "newbuffer" then
-		-- Switch to buffer in current window
-		vim.api.nvim_win_set_buf(0, buf)
 	else
 		-- Use split
 		local split_cmd = win_config.type == "vsplit" and "vsplit" or "split"
