@@ -6,6 +6,7 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 
 - **Buffer-based integration** - Works as regular Neovim buffers with splits/tabs
 - **Flexible window management** - Choose between splits, tabs, or floating windows
+- **Multiple independent sessions** - Open Claude Code in tab and vsplit with separate conversations
 - **Visual selection sending** - Send selected code directly to Claude with a keymap
 - **Session persistence** - Keep your Claude conversation active while navigating files
 - **Session management** - Automatically saves sessions and supports multiple concurrent sessions
@@ -16,6 +17,7 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **Start with selection** - Create new sessions with selected text as initial prompt
 - **Auto-scrolling** - Keeps the latest Claude responses visible
 - **LazyVim integration** - Follows LazyVim conventions with lazy loading
+- **Which-key integration** - Beautiful menu interface when pressing `<leader>cl`
 - **Project context** - Send your project structure to Claude for better assistance
 - **Terminal mode navigation** - Use Esc to exit terminal mode and navigate with vim motions
 
@@ -37,21 +39,22 @@ Add this to your LazyVim plugins directory (`~/.config/nvim/lua/plugins/claude-c
 return {
   "carlos-rodrigo/claude-code.nvim",
   keys = {
-    { "<leader>cc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
-    { "<leader>cn", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
-    { "<leader>cs", "<cmd>ClaudeCodeSend<cr>", desc = "claude: send selection", mode = "v" },
-    { "<leader>cS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "claude: save session" },
-    { "<leader>cu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "claude: update session" },
-    { "<leader>cb", "<cmd>ClaudeCodeSessions<cr>", desc = "claude: browse sessions" },
-    { "<leader>cr", "<cmd>ClaudeCodeRestoreSession<cr>", desc = "claude: restore session" },
-    { "<leader>cw", "<cmd>ClaudeCodeNewWithSelection<cr>", desc = "claude: new with selection", mode = "v" },
+    { "<leader>clc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
+    { "<leader>cln", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
+    { "<leader>cls", "<cmd>ClaudeCodeSend<cr>", desc = "claude: send selection", mode = "v" },
+    { "<leader>clv", "<cmd>ClaudeCodeVsplit<cr>", desc = "claude: open in vsplit" },
+    { "<leader>clS", "<cmd>ClaudeCodeSaveSession<cr>", desc = "claude: save session" },
+    { "<leader>clu", "<cmd>ClaudeCodeUpdateSession<cr>", desc = "claude: update session" },
+    { "<leader>clb", "<cmd>ClaudeCodeSessions<cr>", desc = "claude: browse sessions" },
+    { "<leader>clr", "<cmd>ClaudeCodeRestoreSession<cr>", desc = "claude: restore session" },
+    { "<leader>clw", "<cmd>ClaudeCodeNewWithSelection<cr>", desc = "claude: new with selection", mode = "v" },
   },
   config = function()
     require("claude-code").setup({
       claude_code_cmd = "claude",
       window = {
-        type = "vsplit",        -- "split", "vsplit", "tabnew", "float"
-        position = "right",     -- "right", "left", "top", "bottom"
+        type = "current",       -- "current", "split", "vsplit", "tabnew", "float"
+        position = "right",     -- "right", "left", "top", "bottom" (for splits)
         size = 80,             -- columns for vsplit, lines for split
       },
       auto_scroll = true,
@@ -74,7 +77,8 @@ return {
   cmd = { 
     "ClaudeCode", 
     "ClaudeCodeNew", 
-    "ClaudeCodeToggle", 
+    "ClaudeCodeToggle",
+    "ClaudeCodeVsplit", 
     "ClaudeCodeSessions", 
     "ClaudeCodeSaveSession", 
     "ClaudeCodeUpdateSession",
@@ -85,8 +89,8 @@ return {
     require("claude-code").setup({
       claude_code_cmd = "claude",
       window = {
-        type = "vsplit",        -- "split", "vsplit", "tabnew", "float"
-        position = "right",     -- "right", "left", "top", "bottom"
+        type = "current",       -- "current", "split", "vsplit", "tabnew", "float"
+        position = "right",     -- "right", "left", "top", "bottom" (for splits)
         size = 80,             -- columns for vsplit, lines for split
       },
       auto_scroll = true,
@@ -96,14 +100,15 @@ return {
       session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
       -- Default keybindings (can be customized)
       keybindings = {
-        toggle = "<leader>cc",
-        new_session = "<leader>cn", 
-        send_selection = "<leader>cs",
-        save_session = "<leader>cS",
-        update_session = "<leader>cu",
-        browse_sessions = "<leader>cb",
-        restore_session = "<leader>cr",
-        new_with_selection = "<leader>cw",
+        toggle = "<leader>clc",
+        new_session = "<leader>cln", 
+        send_selection = "<leader>cls",
+        open_vsplit = "<leader>clv",
+        save_session = "<leader>clS",
+        update_session = "<leader>clu",
+        browse_sessions = "<leader>clb",
+        restore_session = "<leader>clr",
+        new_with_selection = "<leader>clw",
       },
     })
   end,
@@ -133,6 +138,7 @@ require("claude-code").setup()
 | `:ClaudeCode`                | claude: open buffer                               |
 | `:ClaudeCodeNew`             | claude: new session                               |
 | `:ClaudeCodeToggle`          | claude: toggle window                             |
+| `:ClaudeCodeVsplit`          | claude: open new session in vsplit                |
 | `:ClaudeCodeSend`            | claude: send selection                            |
 | `:ClaudeCodeSaveSession`     | claude: save session                              |
 | `:ClaudeCodeUpdateSession`   | claude: update session                            |
@@ -142,16 +148,17 @@ require("claude-code").setup()
 
 ### Default Keybindings
 
-| Key          | Mode   | Action                        |
-| ------------ | ------ | ----------------------------- |
-| `<leader>cc` | Normal | claude: toggle window         |
-| `<leader>cn` | Normal | claude: new session           |
-| `<leader>cs` | Visual | claude: send selection        |
-| `<leader>cS` | Normal | claude: save session          |
-| `<leader>cu` | Normal | claude: update session        |
-| `<leader>cb` | Normal | claude: browse sessions       |
-| `<leader>cr` | Normal | claude: restore session       |
-| `<leader>cw` | Visual | claude: new with selection    |
+| Key           | Mode   | Action                        |
+| ------------- | ------ | ----------------------------- |
+| `<leader>clc` | Normal | claude: toggle window         |
+| `<leader>cln` | Normal | claude: new session           |
+| `<leader>cls` | Visual | claude: send selection        |
+| `<leader>clv` | Normal | claude: new session in vsplit |
+| `<leader>clS` | Normal | claude: save session          |
+| `<leader>clu` | Normal | claude: update session        |
+| `<leader>clb` | Normal | claude: browse sessions       |
+| `<leader>clr` | Normal | claude: restore session       |
+| `<leader>clw` | Visual | claude: new with selection    |
 
 ### In Claude Code Buffer
 
@@ -181,7 +188,12 @@ require("claude-code").setup()
 ### Window Types
 
 ```lua
--- Vertical split on the right (default)
+-- Current window (default) - replaces current buffer
+window = {
+  type = "current",
+}
+
+-- Vertical split on the right
 window = {
   type = "vsplit",
   position = "right",
@@ -217,8 +229,8 @@ require("claude-code").setup({
 
   -- Window configuration
   window = {
-    type = "vsplit",        -- "split", "vsplit", "tabnew", "float"
-    position = "right",     -- "right", "left", "top", "bottom"
+    type = "current",       -- "current", "split", "vsplit", "tabnew", "float"
+    position = "right",     -- "right", "left", "top", "bottom" (for splits/float)
     size = 80,             -- for splits: lines/columns, for float: percentage (0.4)
   },
 
@@ -233,14 +245,15 @@ require("claude-code").setup({
 
   -- Default keybindings (set to false to disable, or change keys)
   keybindings = {
-    toggle = "<leader>cc",           -- Toggle Claude Code window
-    new_session = "<leader>cn",      -- Start new session
-    send_selection = "<leader>cs",   -- Send selection to Claude (visual mode)
-    save_session = "<leader>cS",     -- Save session with name
-    update_session = "<leader>cu",   -- Update current session
-    browse_sessions = "<leader>cb",  -- Browse sessions
-    restore_session = "<leader>cr",  -- Restore session
-    new_with_selection = "<leader>cw", -- New session with selection (visual mode)
+    toggle = "<leader>clc",           -- Toggle Claude Code window
+    new_session = "<leader>cln",      -- Start new session
+    send_selection = "<leader>cls",   -- Send selection to Claude (visual mode)
+    open_vsplit = "<leader>clv",      -- Open Claude Code in vsplit
+    save_session = "<leader>clS",     -- Save session with name
+    update_session = "<leader>clu",   -- Update current session
+    browse_sessions = "<leader>clb",  -- Browse sessions
+    restore_session = "<leader>clr",  -- Restore session
+    new_with_selection = "<leader>clw", -- New session with selection (visual mode)
   },
 })
 ```
@@ -258,10 +271,10 @@ You can customize or disable keybindings through the setup configuration:
 ```lua
 require("claude-code").setup({
   keybindings = {
-    toggle = "<leader>ai",           -- Change to different key
-    new_session = "<leader>an",      -- Custom keybinding
-    send_selection = false,          -- Disable this keybinding
-    save_session = "<leader>aS",     -- Use different key combination
+    toggle = "<leader>aic",           -- Change to different key
+    new_session = "<leader>ain",      -- Custom keybinding
+    send_selection = false,           -- Disable this keybinding
+    save_session = "<leader>aiS",     -- Use different key combination
     -- ... other keybindings
   },
 })
@@ -289,10 +302,29 @@ return {
 }
 ```
 
+### Which-key Integration
+
+If you have [which-key.nvim](https://github.com/folke/which-key.nvim) installed, claude-code.nvim will automatically register a beautiful menu interface. Press `<leader>cl` to see all available Claude Code commands:
+
+```
+╭─────────────────────────────────────────╮
+│ 󰚩 Claude Code                          │
+├─────────────────────────────────────────┤
+│ c → Toggle Claude    n → New Session    │
+│ v → Open Vsplit      S → Save Session   │
+│ u → Update Session   b → Browse Sessions│
+│ r → Restore Session                     │
+│                                         │
+│ Visual Mode:                            │
+│ s → Send Selection   w → New with Sel.  │
+╰─────────────────────────────────────────╯
+```
+
 ### Integration with Other Plugins
 
 The plugin works well with:
 
+- **which-key** - Automatic menu registration for all Claude commands
 - **nvim-tree** - Use with vertical splits for a complete IDE layout
 - **telescope** - Send search results to Claude for analysis
 - **trouble** - Get Claude's help with diagnostics
@@ -302,10 +334,12 @@ The plugin works well with:
 
 ### Workflow Examples
 
-1. **Code Review**: Select code, press `<leader>cs`, ask Claude to review
-2. **Debugging**: Send error logs to Claude for analysis
-3. **Documentation**: Send functions to Claude to generate docs
-4. **Refactoring**: Get Claude's suggestions for code improvements
+1. **Quick Questions**: Press `<leader>clc` to toggle Claude in current window, ask quick questions
+2. **Code Review**: Select code, press `<leader>cls`, ask Claude to review
+3. **Parallel Sessions**: Use `<leader>clv` to open a separate Claude session in vsplit for different topics
+4. **Debugging**: Send error logs to Claude for analysis
+5. **Documentation**: Send functions to Claude to generate docs
+6. **Refactoring**: Get Claude's suggestions for code improvements
 
 ### Sample Session
 
@@ -345,7 +379,7 @@ which claude-code
 **Keybinding conflicts**
 
 - Modify the `keys` section in your plugin specification
-- Check for conflicts with `:verbose map <leader>cc`
+- Check for conflicts with `:verbose map <leader>clc`
 
 ## 🤝 Contributing
 

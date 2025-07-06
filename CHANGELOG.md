@@ -5,7 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2025-07-04
+## [1.4.0] - 2025-07-06
+
+### Added
+
+- **Current Window Mode**: New default behavior uses current window instead of creating tabs
+- **Which-key Integration**: Automatic menu interface when pressing `<leader>cl`
+- **Independent Vsplit Sessions**: Vsplit creates completely separate Claude sessions
+- **Organized Keybindings**: All commands now use `<leader>cl` prefix for better organization
+
+### Enhanced
+
+- **Window Management**: Added "current" window type as new default
+- **Session Independence**: Vsplit sessions no longer mirror the main session
+- **User Experience**: Which-key popup shows all available Claude commands
+
+### Changed
+
+- **Default Window Type**: Changed from "tabnew" to "current" for cleaner workflow
+- **Keybinding Structure**: Reorganized all keybindings under `<leader>cl` prefix
+
+### Fixed
+
+- **Session Mirroring**: Fixed vsplit sessions sharing the same conversation as main session
+
+## [1.3.0] - 2025-07-04
 
 ### Added
 
