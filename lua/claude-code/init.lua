@@ -15,6 +15,7 @@ local default_config = {
 	auto_save_session = true,
 	auto_save_notify = true,
 	session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
+	max_exchanges = 20, -- Maximum exchanges to keep in session
 	keybindings = {
 		toggle = "<leader>clc",
 		new_session = "<leader>cln",
@@ -33,6 +34,12 @@ local state = {
 	config = {},
 	terminal_bufnr = nil,
 	sessions = {}, -- Store multiple session buffers
+	current_session = {
+		name = nil,
+		filepath = nil,
+		last_saved_line = 0,
+		is_named = false,
+	},
 }
 
 -- Find Claude Code terminal buffer (main session only)
@@ -266,6 +273,363 @@ function M.send_selection(start_line, end_line)
 	vim.fn.chansend(vim.b[buf].terminal_job_id, text .. "\n")
 end
 
+-- Create session directory if it doesn't exist
+local function create_session_dir()
+	local session_dir = state.config.session_dir
+	if vim.fn.isdirectory(session_dir) == 0 then
+		vim.fn.mkdir(session_dir, "p")
+	end
+end
+
+-- Pattern recognition for content classification
+local user_prompt_patterns = {
+	"^Human:%s*(.+)",                  -- Standard Claude format
+	"^>%s*(.+)",                       -- Command line style
+	"^%$%s*(.+)",                      -- Shell prompt style
+	"^┃%s*(.+)",                       -- Claude's input line marker
+	"^│%s*(.+)",                       -- Alternative input marker
+	"^You:%s*(.+)",                    -- Claude Code "You:" format
+	"^%s*>>>%s*(.+)",                  -- Python-style prompt
+}
+
+local claude_response_patterns = {
+	"^Assistant:%s*(.+)",              -- Standard response format
+	"^Claude:%s*(.+)",                 -- Alternative format
+}
+
+-- Classify line type
+local function classify_line(line)
+	-- Remove ANSI escape sequences
+	local clean_line = line:gsub("\27%[[;%d]*m", ""):gsub("[\r\n\t]", " ")
+	
+	-- Skip empty lines
+	if clean_line:match("^%s*$") then
+		return "skip", nil
+	end
+	
+	-- Skip terminal UI elements
+	if clean_line:match("^[─┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬│]+%s*$") then
+		return "ui_element", nil
+	end
+	
+	-- Check for user prompts
+	for _, pattern in ipairs(user_prompt_patterns) do
+		local content = clean_line:match(pattern)
+		if content then
+			return "user_prompt", content
+		end
+	end
+	
+	-- Check for Claude responses
+	for _, pattern in ipairs(claude_response_patterns) do
+		local content = clean_line:match(pattern)
+		if content then
+			return "claude_start", content
+		end
+	end
+	
+	-- Code fence detection
+	if clean_line:match("^%s*```") then
+		return "code_fence", clean_line
+	end
+	
+	-- System messages to filter
+	if clean_line:match("^%[System%]") or 
+	   clean_line:match("^Loading%.%.%.") or
+	   clean_line:match("^Thinking%.%.%.") or
+	   clean_line:match("^%[%d+m%s*$") then
+		return "system_message", nil
+	end
+	
+	-- Default to content
+	return "content", clean_line
+end
+
+-- Extract essential conversation elements
+local function extract_essential_content(buffer_lines, start_line)
+	local essential_content = {}
+	local in_code_block = false
+	local code_block_lines = {}
+	local last_user_prompt_idx = nil
+	local current_response = {}
+	local in_claude_response = false
+	
+	start_line = start_line or 1
+	
+	for i = start_line, #buffer_lines do
+		local line = buffer_lines[i]
+		local line_type, content = classify_line(line)
+		
+		if line_type == "user_prompt" then
+			-- Save any pending response
+			if in_claude_response and #current_response > 0 then
+				table.insert(essential_content, {
+					type = "response",
+					lines = current_response,
+					start_line = current_response[1].line_num
+				})
+				current_response = {}
+				in_claude_response = false
+			end
+			
+			-- Add user prompt
+			table.insert(essential_content, {
+				type = "user",
+				content = content,
+				line_num = i
+			})
+			last_user_prompt_idx = #essential_content
+			
+		elseif line_type == "claude_start" then
+			in_claude_response = true
+			current_response = {{content = content, line_num = i}}
+			
+		elseif line_type == "code_fence" then
+			if not in_code_block then
+				in_code_block = true
+				code_block_lines = {}
+				if in_claude_response then
+					table.insert(current_response, {content = content, line_num = i})
+				end
+			else
+				-- End of code block
+				if in_claude_response then
+					table.insert(current_response, {content = content, line_num = i})
+					-- Add code summary if block is large
+					if #code_block_lines > 20 then
+						table.insert(current_response, {
+							content = string.format("[Code block condensed: %d lines]", #code_block_lines),
+							line_num = i
+						})
+					else
+						-- Include all lines for small blocks
+						for _, code_line in ipairs(code_block_lines) do
+							table.insert(current_response, code_line)
+						end
+					end
+				end
+				in_code_block = false
+				code_block_lines = {}
+			end
+			
+		elseif in_code_block then
+			table.insert(code_block_lines, {content = line, line_num = i})
+			
+		elseif line_type == "content" and in_claude_response then
+			-- Keep content that's part of Claude's response
+			table.insert(current_response, {content = content, line_num = i})
+			
+		elseif line_type == "skip" or line_type == "ui_element" or line_type == "system_message" then
+			-- Skip these lines
+		end
+	end
+	
+	-- Save any pending response
+	if in_claude_response and #current_response > 0 then
+		table.insert(essential_content, {
+			type = "response",
+			lines = current_response,
+			start_line = current_response[1].line_num
+		})
+	end
+	
+	return essential_content
+end
+
+-- Reduce tokens by keeping only recent exchanges
+local function reduce_tokens(essential_content, max_exchanges)
+	max_exchanges = max_exchanges or 10
+	
+	-- Group into exchanges
+	local exchanges = {}
+	local current_exchange = nil
+	
+	for _, item in ipairs(essential_content) do
+		if item.type == "user" then
+			if current_exchange then
+				table.insert(exchanges, current_exchange)
+			end
+			current_exchange = {
+				user_prompt = item,
+				response = nil
+			}
+		elseif item.type == "response" and current_exchange then
+			current_exchange.response = item
+		end
+	end
+	
+	-- Add last exchange if exists
+	if current_exchange then
+		table.insert(exchanges, current_exchange)
+	end
+	
+	-- Keep only recent exchanges
+	local start_idx = math.max(1, #exchanges - max_exchanges + 1)
+	local recent_exchanges = {}
+	
+	for i = start_idx, #exchanges do
+		table.insert(recent_exchanges, exchanges[i])
+	end
+	
+	return recent_exchanges
+end
+
+-- Format session content for saving
+local function format_session_content(exchanges, metadata)
+	local lines = {}
+	
+	-- Add metadata header
+	table.insert(lines, "=== Claude Code Session ===")
+	table.insert(lines, "Session: " .. (metadata.name or "Untitled"))
+	table.insert(lines, "Created: " .. (metadata.created_at or os.date("%Y-%m-%d %H:%M:%S")))
+	table.insert(lines, "Updated: " .. os.date("%Y-%m-%d %H:%M:%S"))
+	table.insert(lines, "Exchanges: " .. #exchanges)
+	table.insert(lines, "========================")
+	table.insert(lines, "")
+	
+	-- Add exchanges
+	for i, exchange in ipairs(exchanges) do
+		-- User prompt
+		if exchange.user_prompt then
+			table.insert(lines, string.format("### Exchange %d ###", i))
+			table.insert(lines, "Human: " .. exchange.user_prompt.content)
+			table.insert(lines, "")
+		end
+		
+		-- Claude response
+		if exchange.response then
+			table.insert(lines, "Assistant:")
+			for _, resp_line in ipairs(exchange.response.lines) do
+				table.insert(lines, resp_line.content)
+			end
+			table.insert(lines, "")
+		end
+	end
+	
+	return lines
+end
+
+-- Save session with a custom name
+function M.save_session_interactive()
+	local buf = state.terminal_bufnr or find_claude_terminal()
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		vim.notify("No active Claude Code session to save", vim.log.levels.WARN)
+		return
+	end
+	
+	-- Check if updating existing session or creating new
+	if state.current_session.is_named and state.current_session.filepath then
+		local current_name = state.current_session.name
+		vim.ui.select(
+			{"Update existing session", "Save as new session"},
+			{
+				prompt = "Session '" .. current_name .. "' already exists:",
+				format_item = function(item) return item end,
+			},
+			function(choice)
+				if choice == "Update existing session" then
+					M.update_current_session()
+				elseif choice == "Save as new session" then
+					vim.ui.input({
+						prompt = "Enter new session name: ",
+						default = current_name .. "_v2",
+					}, function(input)
+						if input and input ~= "" then
+							M.save_session_with_name(buf, input, true)
+						end
+					end)
+				end
+			end
+		)
+	else
+		-- New session
+		vim.ui.input({
+			prompt = "Enter session name: ",
+			default = "",
+		}, function(input)
+			if input and input ~= "" then
+				M.save_session_with_name(buf, input, true)
+			end
+		end)
+	end
+end
+
+-- Save session with specified name
+function M.save_session_with_name(buf, name, is_new)
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		vim.notify("Invalid buffer for session saving", vim.log.levels.ERROR)
+		return
+	end
+	
+	create_session_dir()
+	
+	-- Get buffer lines
+	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	
+	-- Extract essential content starting from last saved line
+	local start_line = is_new and 1 or (state.current_session.last_saved_line + 1)
+	local essential_content = extract_essential_content(lines, start_line)
+	
+	-- Reduce tokens if needed
+	local exchanges = reduce_tokens(essential_content, state.config.max_exchanges or 20)
+	
+	-- Prepare metadata
+	local metadata = {
+		name = name,
+		created_at = state.current_session.created_at or os.date("%Y-%m-%d %H:%M:%S"),
+	}
+	
+	-- Format content
+	local formatted_lines = format_session_content(exchanges, metadata)
+	
+	-- Determine filepath
+	local filepath
+	if is_new or not state.current_session.filepath then
+		-- Create new file
+		local safe_name = name:gsub("[^%w%s%-_]", ""):gsub("%s+", "_")
+		local timestamp = os.date("%Y%m%d_%H%M%S")
+		local filename = string.format("session_%s_%s.txt", timestamp, safe_name)
+		filepath = state.config.session_dir .. filename
+	else
+		-- Use existing filepath
+		filepath = state.current_session.filepath
+	end
+	
+	-- Save to file
+	local success = pcall(vim.fn.writefile, formatted_lines, filepath)
+	if success then
+		-- Update state
+		state.current_session = {
+			name = name,
+			filepath = filepath,
+			last_saved_line = #lines,
+			is_named = true,
+			created_at = metadata.created_at,
+		}
+		
+		local filename = vim.fn.fnamemodify(filepath, ":t")
+		vim.notify("Session saved: " .. filename .. " (" .. #exchanges .. " exchanges)", vim.log.levels.INFO)
+	else
+		vim.notify("Failed to save session", vim.log.levels.ERROR)
+	end
+end
+
+-- Update current session with new content
+function M.update_current_session()
+	if not state.current_session.is_named or not state.current_session.filepath then
+		vim.notify("No named session to update. Use save session first.", vim.log.levels.WARN)
+		return
+	end
+	
+	local buf = state.terminal_bufnr or find_claude_terminal()
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		vim.notify("No active Claude Code session to update", vim.log.levels.WARN)
+		return
+	end
+	
+	M.save_session_with_name(buf, state.current_session.name, false)
+end
+
 -- Setup function
 function M.setup(opts)
 	state.config = vim.tbl_deep_extend("force", default_config, opts or {})
@@ -279,12 +643,12 @@ function M.setup(opts)
 		M.send_selection(cmd_opts.line1, cmd_opts.line2)
 	end, { desc = "Send selection to Claude Code", range = true })
 	
-	-- These commands were missing from the simplified version, let's add stubs for now
+	-- Session saving functionality
 	vim.api.nvim_create_user_command("ClaudeCodeSaveSession", function()
-		vim.notify("Session saving not yet implemented in this version", vim.log.levels.INFO)
+		M.save_session_interactive()
 	end, { desc = "Save Claude Code session" })
 	vim.api.nvim_create_user_command("ClaudeCodeUpdateSession", function()
-		vim.notify("Session updating not yet implemented in this version", vim.log.levels.INFO)
+		M.update_current_session()
 	end, { desc = "Update Claude Code session" })
 	vim.api.nvim_create_user_command("ClaudeCodeSessions", function()
 		vim.notify("Session browsing not yet implemented in this version", vim.log.levels.INFO)
