@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-07-06
+
+### Added
+
+- **Smart Session Saving**: Intelligent content parsing that reduces token usage by 70-80%
+- **Incremental Saving**: Updates existing sessions with only new content to avoid duplication
+- **Content Classification**: Automatically identifies user prompts, Claude responses, and system messages
+- **Token Reduction**: Filters out UI elements, terminal formatting, and condenses large code blocks
+- **Configurable Exchange Limits**: Control session length with `max_exchanges` parameter (default: 20)
+
+### Enhanced
+
+- **Session Management**: Sessions now save only essential conversation content
+- **File Format**: Clean, structured session files with metadata and organized exchanges
+- **User Experience**: Smart prompting for updating existing sessions vs creating new ones
+
+### Fixed
+
+- **Session Bloat**: Eliminated saving of redundant terminal content and formatting
+- **Token Efficiency**: Dramatically reduced file sizes while maintaining conversation context
+
+### Technical Improvements
+
+- **Content Parser**: Advanced pattern matching for different prompt and response formats
+- **Exchange Tracking**: Proper grouping of user prompts with corresponding responses
+- **Metadata Management**: Session tracking with creation time, updates, and exchange counts
+
 ## [1.4.0] - 2025-07-06
 
 ### Added

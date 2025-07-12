@@ -314,7 +314,23 @@ Claude-code.nvim features intelligent session saving that dramatically reduces t
 - **Token Reduction**: Removes system messages, UI elements, and terminal formatting
 - **Code Block Handling**: Condenses large code blocks to summaries, keeps small ones intact
 - **Incremental Updates**: Only saves new content since last save, avoiding duplication
-- **Configurable Limits**: Keep only recent exchanges (default: 20) to manage file size
+- **Configurable Limits**: Keep only recent exchanges (default: 20) to manage context and performance
+
+#### Why 20 Exchanges?
+The default limit balances several factors:
+- **Token Efficiency**: Stays well under AI model context limits even after restoration
+- **Conversation Quality**: Recent exchanges are most relevant for maintaining context
+- **Performance**: Faster parsing, saving, and loading operations
+- **File Size**: Keeps session files manageable and easy to review
+
+#### Customizing Exchange Limits:
+```lua
+require("claude-code").setup({
+  max_exchanges = 50,  -- For longer conversations
+  max_exchanges = 10,  -- For faster performance
+  max_exchanges = 100, -- For extensive project discussions
+})
+```
 
 #### Saved Session Format:
 ```
