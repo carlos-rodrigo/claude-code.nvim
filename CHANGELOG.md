@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-07-06
+
+### Added
+
+- **Session Browsing**: Full implementation of session browsing with `<leader>clb`
+- **Session Loading**: Load saved sessions into active Claude sessions for context restoration
+- **Smart Esc Handling**: Intelligent Esc key behavior that preserves Claude functionality
+- **Multiple Exit Options**: `<C-[>`, `<C-n>`, and double `<Esc><Esc>` to exit terminal mode
+
+### Enhanced
+
+- **Session Viewing**: Browse sessions with formatted display and markdown syntax highlighting
+- **Context Restoration**: Use `/resume` command to restore session context in Claude
+- **Key Conflict Resolution**: Solved Esc key conflict between Claude (cancel) and Neovim (exit terminal)
+- **Documentation**: Comprehensive documentation of all key bindings and behaviors
+
+### Fixed
+
+- **Session Browsing**: Removed "not yet implemented" message and added full functionality
+- **Terminal Navigation**: Resolved conflict between Claude's Esc usage and vim navigation needs
+
+### User Experience
+
+- **Intuitive Navigation**: Single Esc for Claude actions, double Esc for vim navigation
+- **Session Management**: Complete workflow from save → browse → view → load sessions
+- **Flexible Controls**: Multiple ways to exit terminal mode based on user preference
+
 ## [1.5.0] - 2025-07-06
 
 ### Added

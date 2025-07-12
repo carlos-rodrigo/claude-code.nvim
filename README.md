@@ -14,14 +14,15 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **Incremental saving** - Updates existing sessions with only new content, avoiding duplication
 - **Auto-save on focus loss** - Sessions are automatically saved when you switch buffers or lose focus
 - **Named session saving** - Save sessions with custom names and manage them easily
-- **Session browsing** - Browse and view previous Claude Code conversations
-- **Session restoration** - Restore saved sessions as new active sessions to continue conversations
+- **Session browsing** - Browse and view previous Claude Code conversations  
+- **Session restoration** - Load saved sessions into active Claude sessions to continue conversations
 - **Start with selection** - Create new sessions with selected text as initial prompt
 - **Auto-scrolling** - Keeps the latest Claude responses visible
 - **LazyVim integration** - Follows LazyVim conventions with lazy loading
 - **Which-key integration** - Beautiful menu interface when pressing `<leader>cl`
+- **Smart Esc handling** - Single Esc cancels Claude actions, double Esc exits terminal mode
 - **Project context** - Send your project structure to Claude for better assistance
-- **Terminal mode navigation** - Use Esc to exit terminal mode and navigate with vim motions
+- **Terminal mode navigation** - Multiple ways to exit terminal mode while preserving Claude functionality
 
 ## 📦 Installation
 
@@ -164,13 +165,18 @@ require("claude-code").setup()
 
 ### In Claude Code Buffer
 
-| Key     | Mode     | Action                      |
-| ------- | -------- | --------------------------- |
-| `q`     | Normal   | Close the window            |
-| `<Esc>` | Normal   | Close the window            |
-| `<Esc>` | Terminal | Exit to normal mode         |
-| `<C-q>` | Terminal | Close the window            |
-| `i`     | Normal   | Enter terminal (insert) mode|
+| Key         | Mode     | Action                      |
+| ----------- | -------- | --------------------------- |
+| `q`         | Normal   | Close the window            |
+| `<Esc>`     | Normal   | Close the window            |
+| `<Esc>`     | Terminal | Send Esc to Claude (cancel action) |
+| `<Esc><Esc>` | Terminal | Exit to normal mode         |
+| `<C-[>`     | Terminal | Exit to normal mode         |
+| `<C-n>`     | Terminal | Exit to normal mode         |
+| `<C-q>`     | Terminal | Close the window            |
+| `i`         | Normal   | Enter terminal (insert) mode|
+
+**Smart Esc Handling**: Single `<Esc>` sends cancel to Claude, double `<Esc>` exits terminal mode.
 
 ### Tab Navigation (tabnew mode only)
 
@@ -385,9 +391,11 @@ The plugin works well with:
 2. **Code Review**: Select code, press `<leader>cls`, ask Claude to review
 3. **Parallel Sessions**: Use `<leader>clv` to open a separate Claude session in vsplit for different topics
 4. **Session Management**: Use `<leader>clS` to save important conversations with smart token reduction
-5. **Debugging**: Send error logs to Claude for analysis
-6. **Documentation**: Send functions to Claude to generate docs
-7. **Refactoring**: Get Claude's suggestions for code improvements
+5. **Browse & Restore**: Use `<leader>clb` to browse saved sessions and load them into active Claude
+6. **Smart Navigation**: Single `<Esc>` cancels Claude actions, double `<Esc><Esc>` for vim navigation
+7. **Debugging**: Send error logs to Claude for analysis
+8. **Documentation**: Send functions to Claude to generate docs
+9. **Refactoring**: Get Claude's suggestions for code improvements
 
 ### Session Management Workflow
 
