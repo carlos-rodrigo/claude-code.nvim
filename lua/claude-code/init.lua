@@ -630,6 +630,131 @@ function M.update_current_session()
 	M.save_session_with_name(buf, state.current_session.name, false)
 end
 
+-- List saved sessions
+function M.list_sessions()
+	create_session_dir()
+	local session_files = vim.fn.glob(state.config.session_dir .. "session_*.txt", false, true)
+	
+	-- Sort sessions by date (newest first)
+	table.sort(session_files, function(a, b) return a > b end)
+	
+	local sessions = {}
+	for _, file in ipairs(session_files) do
+		local basename = vim.fn.fnamemodify(file, ":t")
+		local timestamp, custom_name = basename:match("session_(%d+_%d+)_?(.*)%.txt")
+		if timestamp then
+			-- Format timestamp for display
+			local year, month, day, hour, min, sec = timestamp:match("(%d%d%d%d)(%d%d)(%d%d)_(%d%d)(%d%d)(%d%d)")
+			local display_name = string.format("%s-%s-%s %s:%s:%s", year, month, day, hour, min, sec)
+			
+			-- Add custom name if present
+			if custom_name and custom_name ~= "" then
+				display_name = display_name .. " - " .. custom_name:gsub("_", " ")
+			end
+			
+			table.insert(sessions, {
+				file = file,
+				timestamp = timestamp,
+				display_name = display_name
+			})
+		end
+	end
+	
+	return sessions
+end
+
+-- Browse saved sessions
+function M.browse_sessions()
+	local sessions = M.list_sessions()
+	
+	if #sessions == 0 then
+		vim.notify("No Claude Code sessions found", vim.log.levels.INFO)
+		return
+	end
+	
+	-- Create selection menu
+	local choices = {}
+	for i, session in ipairs(sessions) do
+		table.insert(choices, string.format("%d. %s", i, session.display_name))
+	end
+	
+	vim.ui.select(choices, {
+		prompt = "Select a Claude Code session:",
+		format_item = function(item) return item end,
+	}, function(choice, idx)
+		if choice and idx then
+			local selected_session = sessions[idx]
+			-- Ask what to do with the selected session
+			vim.ui.select(
+				{"View session", "Load session content"},
+				{
+					prompt = "What would you like to do with: " .. selected_session.display_name,
+					format_item = function(item) return item end,
+				},
+				function(action)
+					if action == "View session" then
+						M.view_session(selected_session.file)
+					elseif action == "Load session content" then
+						M.load_session_content(selected_session.file)
+					end
+				end
+			)
+		end
+	end)
+end
+
+-- View session in a new buffer
+function M.view_session(session_file)
+	if not vim.fn.filereadable(session_file) then
+		vim.notify("Session file not found: " .. session_file, vim.log.levels.ERROR)
+		return
+	end
+	
+	-- Create a new buffer for viewing the session
+	local buf = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_name(buf, "Claude Session: " .. vim.fn.fnamemodify(session_file, ":t"))
+	
+	-- Read session content
+	local lines = vim.fn.readfile(session_file)
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	
+	-- Set buffer options
+	vim.bo[buf].modifiable = false
+	vim.bo[buf].buftype = "nofile"
+	vim.bo[buf].swapfile = false
+	vim.bo[buf].filetype = "markdown"
+	
+	-- Open in current window
+	vim.api.nvim_win_set_buf(0, buf)
+end
+
+-- Load session content into current Claude session
+function M.load_session_content(session_file)
+	if not vim.fn.filereadable(session_file) then
+		vim.notify("Session file not found: " .. session_file, vim.log.levels.ERROR)
+		return
+	end
+	
+	local buf = state.terminal_bufnr or find_claude_terminal()
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		vim.notify("No active Claude Code session. Start Claude first.", vim.log.levels.WARN)
+		return
+	end
+	
+	-- Read session content
+	local lines = vim.fn.readfile(session_file)
+	local content = table.concat(lines, "\n")
+	
+	-- Send /resume command followed by session content
+	if vim.b[buf].terminal_job_id then
+		vim.fn.chansend(vim.b[buf].terminal_job_id, "/resume\n")
+		vim.defer_fn(function()
+			vim.fn.chansend(vim.b[buf].terminal_job_id, content .. "\n")
+		end, 200)
+		vim.notify("Session content loaded into Claude", vim.log.levels.INFO)
+	end
+end
+
 -- Setup function
 function M.setup(opts)
 	state.config = vim.tbl_deep_extend("force", default_config, opts or {})
@@ -651,7 +776,7 @@ function M.setup(opts)
 		M.update_current_session()
 	end, { desc = "Update Claude Code session" })
 	vim.api.nvim_create_user_command("ClaudeCodeSessions", function()
-		vim.notify("Session browsing not yet implemented in this version", vim.log.levels.INFO)
+		M.browse_sessions()
 	end, { desc = "Browse Claude Code sessions" })
 	vim.api.nvim_create_user_command("ClaudeCodeRestoreSession", function()
 		vim.notify("Session restoration not yet implemented in this version", vim.log.levels.INFO)
