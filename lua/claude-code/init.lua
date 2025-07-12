@@ -151,7 +151,12 @@ function M.open()
 		
 		-- Set up buffer-local keymaps
 		local buf = state.terminal_bufnr
-		vim.api.nvim_buf_set_keymap(buf, 't', '<Esc>', '<C-\\><C-n>', { noremap = true })
+		-- Smart Esc handling - double tap to exit terminal mode
+		vim.api.nvim_buf_set_keymap(buf, 't', '<Esc><Esc>', '<C-\\><C-n>', { noremap = true })
+		-- Ctrl+[ as alternative to exit terminal mode
+		vim.api.nvim_buf_set_keymap(buf, 't', '<C-[>', '<C-\\><C-n>', { noremap = true })
+		-- Ctrl+n as another alternative
+		vim.api.nvim_buf_set_keymap(buf, 't', '<C-n>', '<C-\\><C-n>', { noremap = true })
 		vim.api.nvim_buf_set_keymap(buf, 'n', 'q', ':q<CR>', { noremap = true })
 		
 		-- Disable various plugins for this buffer
@@ -221,7 +226,12 @@ function M.open_vsplit()
 	table.insert(state.sessions, new_buf)
 	
 	-- Set up buffer-local keymaps
-	vim.api.nvim_buf_set_keymap(new_buf, 't', '<Esc>', '<C-\\><C-n>', { noremap = true })
+	-- Smart Esc handling - double tap to exit terminal mode
+	vim.api.nvim_buf_set_keymap(new_buf, 't', '<Esc><Esc>', '<C-\\><C-n>', { noremap = true })
+	-- Ctrl+[ as alternative to exit terminal mode
+	vim.api.nvim_buf_set_keymap(new_buf, 't', '<C-[>', '<C-\\><C-n>', { noremap = true })
+	-- Ctrl+n as another alternative
+	vim.api.nvim_buf_set_keymap(new_buf, 't', '<C-n>', '<C-\\><C-n>', { noremap = true })
 	vim.api.nvim_buf_set_keymap(new_buf, 'n', 'q', ':q<CR>', { noremap = true })
 	
 	-- Disable various plugins for this buffer
