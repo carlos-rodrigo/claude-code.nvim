@@ -186,11 +186,14 @@ The plugin automatically installs custom commands for Claude Code:
 
 | Command | Description |
 | ------- | ----------- |
+| `/plan` | Create BDD-like specifications through guided planning |
 | `/push-to-prod` | Standard git commit and push workflow |
 | `/push-to-prod release` | Commit, push, and create release tag |
 | `/push-to-prod "message"` | Use custom commit message |
 
-These commands are created in `.claude/commands/` in your project root and provide intelligent git operations with proper commit formatting and PR creation.
+These commands are created in `.claude/commands/` in your project root:
+- `/plan` - Guides you through creating feature specifications in BDD format, saved as markdown files in `.ai/` directory
+- `/push-to-prod` - Provides intelligent git operations with proper commit formatting and PR creation
 
 ### Tab Navigation (tabnew mode only)
 

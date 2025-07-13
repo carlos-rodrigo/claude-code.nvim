@@ -353,18 +353,94 @@ Arguments provided: $ARGUMENTS
 Please proceed with the git operations, ensuring all commit messages follow conventional commit format and include proper attribution.
 ]]
 	
+	-- Define the plan command content
+	local plan_content = [[---
+description: Create BDD-like specifications for features through guided planning
+allowed-tools:
+  - write
+  - read
+  - bash
+---
+
+# Plan - BDD Specification Builder
+
+This command helps you create behavior-driven development (BDD) style specifications by guiding you through a structured planning process. The output will be a feature specification document saved in the `.ai/` directory.
+
+## Process Overview
+
+I'll help you build a comprehensive feature specification by asking targeted questions about:
+
+1. **Feature Overview**
+   - Feature name and description
+   - Business value and goals
+   - Target users/personas
+
+2. **User Stories**
+   - As a [user type]
+   - I want [functionality]
+   - So that [benefit]
+
+3. **Acceptance Criteria**
+   - Given [context/precondition]
+   - When [action/event]
+   - Then [expected outcome]
+
+4. **Technical Considerations**
+   - Dependencies and constraints
+   - Non-functional requirements
+   - Edge cases and error scenarios
+
+5. **Success Metrics**
+   - How to measure success
+   - Key performance indicators
+
+## Let's Begin
+
+I'll guide you through creating a BDD-style specification. First, let me create the `.ai` directory if it doesn't exist:
+
+```bash
+mkdir -p .ai
+```
+
+Now, let's start with the basics:
+
+### 1. Feature Overview
+
+**What is the name of the feature you want to plan?**
+Please provide a short, descriptive name (e.g., "User Authentication", "Shopping Cart", "Email Notifications")
+
+After you provide the feature name, I'll continue asking questions to build a complete specification. Each answer you provide will help create a more detailed and actionable feature description.
+
+The final output will be saved as `.ai/[feature-name]-spec.md` with a structured format that includes:
+- Feature description
+- User stories with acceptance criteria
+- Technical requirements
+- Testing scenarios
+- Implementation notes
+
+Please start by telling me the feature name, and I'll guide you through the rest of the planning process.
+]]
+	
 	-- Write the push-to-prod command file
-	local command_file = claude_commands_dir .. "/push-to-prod.md"
-	local file = io.open(command_file, "w")
+	local push_command_file = claude_commands_dir .. "/push-to-prod.md"
+	local file = io.open(push_command_file, "w")
 	if file then
 		file:write(push_to_prod_content)
 		file:close()
-		
-		-- Only notify on first setup, not on every plugin load
-		if not vim.g.claude_code_commands_setup then
-			vim.g.claude_code_commands_setup = true
-			vim.notify("Claude Code: Custom commands installed in " .. claude_commands_dir, vim.log.levels.INFO)
-		end
+	end
+	
+	-- Write the plan command file
+	local plan_command_file = claude_commands_dir .. "/plan.md"
+	file = io.open(plan_command_file, "w")
+	if file then
+		file:write(plan_content)
+		file:close()
+	end
+	
+	-- Only notify on first setup, not on every plugin load
+	if not vim.g.claude_code_commands_setup then
+		vim.g.claude_code_commands_setup = true
+		vim.notify("Claude Code: Custom commands installed in " .. claude_commands_dir, vim.log.levels.INFO)
 	end
 end
 
