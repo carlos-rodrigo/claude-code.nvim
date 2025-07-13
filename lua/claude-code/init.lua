@@ -16,6 +16,7 @@ local default_config = {
 	auto_save_notify = true,
 	session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
 	max_exchanges = 20, -- Maximum exchanges to keep in session
+	setup_claude_commands = true, -- Automatically setup Claude custom commands
 	keybindings = {
 		toggle = "<leader>clc",
 		new_session = "<leader>cln",
@@ -288,6 +289,82 @@ local function create_session_dir()
 	local session_dir = state.config.session_dir
 	if vim.fn.isdirectory(session_dir) == 0 then
 		vim.fn.mkdir(session_dir, "p")
+	end
+end
+
+-- Setup Claude custom commands
+local function setup_claude_commands()
+	-- Get the current working directory (project root)
+	local cwd = vim.fn.getcwd()
+	local claude_commands_dir = cwd .. "/.claude/commands"
+	
+	-- Create .claude/commands directory if it doesn't exist
+	if vim.fn.isdirectory(claude_commands_dir) == 0 then
+		vim.fn.mkdir(claude_commands_dir, "p")
+	end
+	
+	-- Define the push-to-prod command content
+	local push_to_prod_content = [[---
+description: Push changes to production with smart git operations
+allowed-tools:
+  - bash
+  - read
+  - write
+  - grep
+---
+
+# Push to Production
+
+This command will help you push your changes to production by:
+1. Checking git status
+2. Committing changes with a descriptive message
+3. Pushing to the current branch
+4. Creating a pull request if needed
+
+## Usage:
+- `/push-to-prod` - Standard push with commit
+- `/push-to-prod release` - Also create a release tag
+- `/push-to-prod "custom message"` - Use custom commit message
+
+## Instructions:
+
+First, check the current git status and branch:
+!git status
+!git branch --show-current
+
+Based on the status, perform the following:
+
+1. If there are uncommitted changes:
+   - Stage all changes: `git add .`
+   - Create a commit with a descriptive message
+   - If $ARGUMENTS contains "release", determine the next version number
+
+2. Push changes:
+   - Push to origin
+   - If not on main/master, offer to create a pull request
+
+3. If $ARGUMENTS contains "release":
+   - Create an annotated tag
+   - Push the tag
+   - Update CHANGELOG.md if it exists
+
+Arguments provided: $ARGUMENTS
+
+Please proceed with the git operations, ensuring all commit messages follow conventional commit format and include proper attribution.
+]]
+	
+	-- Write the push-to-prod command file
+	local command_file = claude_commands_dir .. "/push-to-prod.md"
+	local file = io.open(command_file, "w")
+	if file then
+		file:write(push_to_prod_content)
+		file:close()
+		
+		-- Only notify on first setup, not on every plugin load
+		if not vim.g.claude_code_commands_setup then
+			vim.g.claude_code_commands_setup = true
+			vim.notify("Claude Code: Custom commands installed in " .. claude_commands_dir, vim.log.levels.INFO)
+		end
 	end
 end
 
@@ -769,6 +846,11 @@ end
 function M.setup(opts)
 	state.config = vim.tbl_deep_extend("force", default_config, opts or {})
 	
+	-- Setup Claude custom commands if enabled
+	if state.config.setup_claude_commands then
+		setup_claude_commands()
+	end
+	
 	-- Create user commands
 	vim.api.nvim_create_user_command("ClaudeCode", M.open, { desc = "Open Claude Code" })
 	vim.api.nvim_create_user_command("ClaudeCodeToggle", M.toggle, { desc = "Toggle Claude Code" })
@@ -807,6 +889,12 @@ function M.setup(opts)
 			end
 		end, 100)
 	end, { desc = "New Claude Code session with selection", range = true })
+	
+	-- Command to manually setup Claude commands
+	vim.api.nvim_create_user_command("ClaudeCodeSetupCommands", function()
+		setup_claude_commands()
+		vim.notify("Claude Code: Custom commands setup completed", vim.log.levels.INFO)
+	end, { desc = "Setup Claude Code custom commands" })
 	
 	-- Set up keybindings
 	local keys = state.config.keybindings
