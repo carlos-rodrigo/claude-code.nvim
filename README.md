@@ -21,6 +21,7 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **LazyVim integration** - Follows LazyVim conventions with lazy loading
 - **Which-key integration** - Beautiful menu interface when pressing `<leader>cl`
 - **Smart Esc handling** - Single Esc cancels Claude actions, double Esc exits terminal mode
+- **Custom Claude commands** - Automatically installs `/push-to-prod` command for git operations
 - **Project context** - Send your project structure to Claude for better assistance
 - **Terminal mode navigation** - Multiple ways to exit terminal mode while preserving Claude functionality
 
@@ -148,6 +149,7 @@ require("claude-code").setup()
 | `:ClaudeCodeSessions`        | claude: browse sessions                           |
 | `:ClaudeCodeRestoreSession`  | claude: restore session                           |
 | `:ClaudeCodeNewWithSelection`| claude: new with selection                        |
+| `:ClaudeCodeSetupCommands`   | claude: setup custom commands                     |
 
 ### Default Keybindings
 
@@ -177,6 +179,18 @@ require("claude-code").setup()
 | `i`         | Normal   | Enter terminal (insert) mode|
 
 **Smart Esc Handling**: Single `<Esc>` sends cancel to Claude, double `<Esc>` exits terminal mode.
+
+### Custom Claude Commands
+
+The plugin automatically installs custom commands for Claude Code:
+
+| Command | Description |
+| ------- | ----------- |
+| `/push-to-prod` | Standard git commit and push workflow |
+| `/push-to-prod release` | Commit, push, and create release tag |
+| `/push-to-prod "message"` | Use custom commit message |
+
+These commands are created in `.claude/commands/` in your project root and provide intelligent git operations with proper commit formatting and PR creation.
 
 ### Tab Navigation (tabnew mode only)
 
@@ -251,6 +265,7 @@ require("claude-code").setup({
   auto_save_notify = true,   -- Show notification when auto-saving sessions
   session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
   max_exchanges = 20,        -- Maximum exchanges to keep in saved sessions
+  setup_claude_commands = true, -- Automatically setup Claude custom commands
 
   -- Default keybindings (set to false to disable, or change keys)
   keybindings = {

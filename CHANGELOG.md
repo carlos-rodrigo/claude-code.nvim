@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2025-07-13
+
+### Added
+
+- **Custom Claude Commands**: Automatic installation of `/push-to-prod` command for git operations
+- **Project-level Commands**: Commands are created in `.claude/commands/` directory in project root
+- **Smart Git Workflow**: Integrated git commit, push, and release tag creation workflow
+- **YAML Frontmatter Support**: Commands include proper tool permissions configuration
+- **Manual Setup Command**: `:ClaudeCodeSetupCommands` for manual command installation
+
+### Enhanced
+
+- **Automated Setup**: Commands are automatically installed when plugin is loaded or updated
+- **Git Integration**: Push-to-prod command supports standard commits, releases, and custom messages
+- **Configuration Option**: `setup_claude_commands` config option to control automatic setup
+- **Documentation**: Comprehensive documentation of custom commands feature
+
+### Commands Added
+
+- `:ClaudeCodeSetupCommands` - Manually setup Claude custom commands
+
+### Custom Commands Available
+
+- `/push-to-prod` - Standard git commit and push workflow
+- `/push-to-prod release` - Also create a release tag
+- `/push-to-prod "message"` - Use custom commit message
+
 ## [1.6.0] - 2025-07-06
 
 ### Added
