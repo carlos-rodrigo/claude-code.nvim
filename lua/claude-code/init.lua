@@ -303,138 +303,27 @@ local function setup_claude_commands()
 		vim.fn.mkdir(claude_commands_dir, "p")
 	end
 	
-	-- Define the push-to-prod command content
-	local push_to_prod_content = [[---
-description: Push changes to production with smart git operations
-allowed-tools:
-  - bash
-  - read
-  - write
-  - grep
----
-
-# Push to Production
-
-This command will help you push your changes to production by:
-1. Checking git status
-2. Committing changes with a descriptive message
-3. Pushing to the current branch
-4. Creating a pull request if needed
-
-## Usage:
-- `/push-to-prod` - Standard push with commit
-- `/push-to-prod release` - Also create a release tag
-- `/push-to-prod "custom message"` - Use custom commit message
-
-## Instructions:
-
-First, check the current git status and branch:
-!git status
-!git branch --show-current
-
-Based on the status, perform the following:
-
-1. If there are uncommitted changes:
-   - Stage all changes: `git add .`
-   - Create a commit with a descriptive message
-   - If $ARGUMENTS contains "release", determine the next version number
-
-2. Push changes:
-   - Push to origin
-   - If not on main/master, offer to create a pull request
-
-3. If $ARGUMENTS contains "release":
-   - Create an annotated tag
-   - Push the tag
-   - Update CHANGELOG.md if it exists
-
-Arguments provided: $ARGUMENTS
-
-Please proceed with the git operations, ensuring all commit messages follow conventional commit format and include proper attribution.
-]]
+	-- Get the plugin directory
+	local plugin_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h")
+	local templates_dir = plugin_dir .. "/commands"
 	
-	-- Define the plan command content
-	local plan_content = [[---
-description: Create BDD-like specifications for features through guided planning
-allowed-tools:
-  - write
-  - read
-  - bash
----
-
-# Plan - BDD Specification Builder
-
-This command helps you create behavior-driven development (BDD) style specifications by guiding you through a structured planning process. The output will be a feature specification document saved in the `.ai/` directory.
-
-## Process Overview
-
-I'll help you build a comprehensive feature specification by asking targeted questions about:
-
-1. **Feature Overview**
-   - Feature name and description
-   - Business value and goals
-   - Target users/personas
-
-2. **User Stories**
-   - As a [user type]
-   - I want [functionality]
-   - So that [benefit]
-
-3. **Acceptance Criteria**
-   - Given [context/precondition]
-   - When [action/event]
-   - Then [expected outcome]
-
-4. **Technical Considerations**
-   - Dependencies and constraints
-   - Non-functional requirements
-   - Edge cases and error scenarios
-
-5. **Success Metrics**
-   - How to measure success
-   - Key performance indicators
-
-## Let's Begin
-
-I'll guide you through creating a BDD-style specification. First, let me create the `.ai` directory if it doesn't exist:
-
-```bash
-mkdir -p .ai
-```
-
-Now, let's start with the basics:
-
-### 1. Feature Overview
-
-**What is the name of the feature you want to plan?**
-Please provide a short, descriptive name (e.g., "User Authentication", "Shopping Cart", "Email Notifications")
-
-After you provide the feature name, I'll continue asking questions to build a complete specification. Each answer you provide will help create a more detailed and actionable feature description.
-
-The final output will be saved as `.ai/[feature-name]-spec.md` with a structured format that includes:
-- Feature description
-- User stories with acceptance criteria
-- Technical requirements
-- Testing scenarios
-- Implementation notes
-
-Please start by telling me the feature name, and I'll guide you through the rest of the planning process.
-]]
+	-- List of command templates to copy
+	local commands = {"push-to-prod.md", "plan.md"}
 	
-	-- Write the push-to-prod command file
-	local push_command_file = claude_commands_dir .. "/push-to-prod.md"
-	local file = io.open(push_command_file, "w")
-	if file then
-		file:write(push_to_prod_content)
-		file:close()
-	end
-	
-	-- Write the plan command file
-	local plan_command_file = claude_commands_dir .. "/plan.md"
-	file = io.open(plan_command_file, "w")
-	if file then
-		file:write(plan_content)
-		file:close()
+	-- Copy each command template to the project directory
+	for _, command_file in ipairs(commands) do
+		local template_path = templates_dir .. "/" .. command_file
+		local target_path = claude_commands_dir .. "/" .. command_file
+		
+		-- Check if template exists
+		if vim.fn.filereadable(template_path) == 1 then
+			-- Read template content
+			local template_content = vim.fn.readfile(template_path)
+			-- Write to target location
+			vim.fn.writefile(template_content, target_path)
+		else
+			vim.notify("Warning: Command template not found: " .. template_path, vim.log.levels.WARN)
+		end
 	end
 	
 	-- Only notify on first setup, not on every plugin load
