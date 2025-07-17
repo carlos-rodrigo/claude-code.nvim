@@ -149,7 +149,6 @@ require("claude-code").setup()
 | `:ClaudeCodeSessions`        | claude: browse sessions                           |
 | `:ClaudeCodeRestoreSession`  | claude: restore session                           |
 | `:ClaudeCodeNewWithSelection`| claude: new with selection                        |
-| `:ClaudeCodeSetupCommands`   | claude: setup custom commands                     |
 | `:ClaudeCodeInstallCommands` | claude: install custom commands                   |
 
 ### Default Keybindings

@@ -855,12 +855,7 @@ function M.setup(opts)
 		end, 100)
 	end, { desc = "New Claude Code session with selection", range = true })
 	
-	-- Commands to manually setup Claude commands
-	vim.api.nvim_create_user_command("ClaudeCodeSetupCommands", function()
-		setup_claude_commands()
-		vim.notify("Claude Code: Custom commands setup completed", vim.log.levels.INFO)
-	end, { desc = "Setup Claude Code custom commands" })
-	
+	-- Command to manually install Claude commands
 	vim.api.nvim_create_user_command("ClaudeCodeInstallCommands", function()
 		setup_claude_commands()
 		vim.notify("Claude Code: Custom commands installed", vim.log.levels.INFO)
