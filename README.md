@@ -288,7 +288,10 @@ require("claude-code").setup({
   auto_save_notify = true,   -- Show notification when auto-saving sessions
   session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
   max_exchanges = 20,        -- Maximum exchanges to keep in saved sessions
-  setup_claude_commands = false, -- Don't automatically setup Claude custom commands (use :ClaudeCodeInstallCommands instead)
+  
+  -- Custom Commands (Opinionated Workflow)
+  setup_claude_commands = false, -- Don't automatically install custom commands (default: false)
+                                  -- Use :ClaudeCodeInstallCommands to install /ship and /plan commands
 
   -- Default keybindings (set to false to disable, or change keys)
   keybindings = {
