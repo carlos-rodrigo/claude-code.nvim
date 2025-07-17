@@ -180,9 +180,13 @@ require("claude-code").setup()
 
 **Smart Esc Handling**: Single `<Esc>` sends cancel to Claude, double `<Esc>` exits terminal mode.
 
-### Custom Claude Commands
+### Custom Claude Commands (Opinionated Workflow)
 
-The plugin provides optional custom commands for Claude Code. To install them, run:
+The plugin provides optional custom commands that implement my personal development workflow. These commands reflect my "vibe coding" approach - focusing on planning first, then shipping quickly.
+
+**⚠️ These are opinionated tools** - they follow specific patterns and conventions that work for my workflow. You may want to customize them or create your own commands based on your preferences.
+
+To install these commands, run:
 
 ```vim
 :ClaudeCodeInstallCommands
@@ -195,9 +199,21 @@ Available commands:
 | `/plan` | Interactive BDD specification builder for feature planning |
 | `/ship` | Streamlined git workflow: commit, push, PR, and release |
 
+#### My Workflow Philosophy
+
+- **Plan First**: Use `/plan` to think through features in BDD style before coding
+- **Ship Fast**: Use `/ship` to get changes live quickly with proper git workflow
+- **Specifications in `.ai/`**: Keep planning docs separate from code
+- **Conventional Commits**: Follow standardized commit message format
+- **PR-based**: Always create PRs for review, even solo projects
+
+#### Command Details
+
 These commands are created in `.claude/commands/` in your project root:
 - `/plan` - Interactive planning tool that guides you through creating comprehensive BDD-style feature specifications, saved as markdown files in `.ai/` directory
 - `/ship` - All-in-one command to commit changes, push to remote, create pull requests, and optionally create releases with intelligent defaults
+
+Feel free to modify these commands in your project's `.claude/commands/` directory to match your own workflow preferences!
 
 ### Tab Navigation (tabnew mode only)
 
