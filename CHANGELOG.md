@@ -9,20 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Custom Claude Commands**: Automatic installation of `/push-to-prod` and `/plan` commands
+- **Custom Claude Commands**: Automatic installation of `/ship` and `/plan` commands
 - **BDD Planning Command**: `/plan` command for creating behavior-driven development specifications
+- **Ship Command**: `/ship` command for streamlined git workflow (formerly push-to-prod)
 - **Project-level Commands**: Commands are created in `.claude/commands/` directory in project root
-- **Smart Git Workflow**: Integrated git commit, push, and release tag creation workflow
-- **YAML Frontmatter Support**: Commands include proper tool permissions configuration
+- **Command Templates**: Commands stored as template files in plugin for easier management
 - **Manual Setup Command**: `:ClaudeCodeSetupCommands` for manual command installation
 
 ### Enhanced
 
 - **Automated Setup**: Commands are automatically installed when plugin is loaded or updated
-- **Git Integration**: Push-to-prod command supports standard commits, releases, and custom messages
-- **Planning Workflow**: Guided BDD specification creation with structured output to `.ai/` directory
+- **Git Integration**: Ship command supports commits, PRs, and releases in one workflow
+- **Planning Workflow**: Interactive BDD specification creation with structured output to `.ai/` directory
 - **Configuration Option**: `setup_claude_commands` config option to control automatic setup
 - **Documentation**: Comprehensive documentation of custom commands feature
+
+### Changed
+
+- **Renamed Command**: `push-to-prod` renamed to `ship` for better clarity
 
 ### Commands Added
 
@@ -30,10 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Custom Commands Available
 
-- `/plan` - Create BDD-like specifications through guided planning
-- `/push-to-prod` - Standard git commit and push workflow
-- `/push-to-prod release` - Also create a release tag
-- `/push-to-prod "message"` - Use custom commit message
+- `/plan` - Interactive BDD specification builder for feature planning
+- `/ship` - Streamlined git workflow: commit, push, PR, and release
 
 ## [1.6.0] - 2025-07-06
 
