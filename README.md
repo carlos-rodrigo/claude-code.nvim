@@ -150,6 +150,7 @@ require("claude-code").setup()
 | `:ClaudeCodeRestoreSession`  | claude: restore session                           |
 | `:ClaudeCodeNewWithSelection`| claude: new with selection                        |
 | `:ClaudeCodeSetupCommands`   | claude: setup custom commands                     |
+| `:ClaudeCodeInstallCommands` | claude: install custom commands                   |
 
 ### Default Keybindings
 
@@ -182,7 +183,13 @@ require("claude-code").setup()
 
 ### Custom Claude Commands
 
-The plugin automatically installs custom commands for Claude Code:
+The plugin provides optional custom commands for Claude Code. To install them, run:
+
+```vim
+:ClaudeCodeInstallCommands
+```
+
+Available commands:
 
 | Command | Description |
 | ------- | ----------- |
@@ -266,7 +273,7 @@ require("claude-code").setup({
   auto_save_notify = true,   -- Show notification when auto-saving sessions
   session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
   max_exchanges = 20,        -- Maximum exchanges to keep in saved sessions
-  setup_claude_commands = true, -- Automatically setup Claude custom commands
+  setup_claude_commands = false, -- Don't automatically setup Claude custom commands (use :ClaudeCodeInstallCommands instead)
 
   -- Default keybindings (set to false to disable, or change keys)
   keybindings = {

@@ -16,7 +16,7 @@ local default_config = {
 	auto_save_notify = true,
 	session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
 	max_exchanges = 20, -- Maximum exchanges to keep in session
-	setup_claude_commands = true, -- Automatically setup Claude custom commands
+	setup_claude_commands = false, -- Don't automatically setup Claude custom commands
 	keybindings = {
 		toggle = "<leader>clc",
 		new_session = "<leader>cln",
@@ -855,11 +855,16 @@ function M.setup(opts)
 		end, 100)
 	end, { desc = "New Claude Code session with selection", range = true })
 	
-	-- Command to manually setup Claude commands
+	-- Commands to manually setup Claude commands
 	vim.api.nvim_create_user_command("ClaudeCodeSetupCommands", function()
 		setup_claude_commands()
 		vim.notify("Claude Code: Custom commands setup completed", vim.log.levels.INFO)
 	end, { desc = "Setup Claude Code custom commands" })
+	
+	vim.api.nvim_create_user_command("ClaudeCodeInstallCommands", function()
+		setup_claude_commands()
+		vim.notify("Claude Code: Custom commands installed", vim.log.levels.INFO)
+	end, { desc = "Install Claude Code custom commands" })
 	
 	-- Set up keybindings
 	local keys = state.config.keybindings
