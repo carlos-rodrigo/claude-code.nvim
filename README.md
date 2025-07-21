@@ -197,21 +197,26 @@ Available commands:
 | Command | Description |
 | ------- | ----------- |
 | `/plan` | Interactive BDD specification builder for feature planning |
+| `/code` | TDD-focused implementation agent that reads .ai specs |
 | `/ship` | Streamlined git workflow: commit, push, PR, and release |
 
 #### My Workflow Philosophy
 
 - **Plan First**: Use `/plan` to think through features in BDD style before coding
+- **Implement with TDD**: Use `/code` to implement features using Test-Driven Development
 - **Ship Fast**: Use `/ship` to get changes live quickly with proper git workflow
 - **Specifications in `.ai/`**: Keep planning docs separate from code
-- **Conventional Commits**: Follow standardized commit message format
-- **PR-based**: Always create PRs for review, even solo projects
+- **Incremental Development**: Build features in deployable slices
+- **Test Coverage**: Every behavior should have a test
 
 #### Command Details
 
 These commands are created in `.claude/commands/` in your project root:
-- `/plan` - Interactive planning tool that guides you through creating comprehensive BDD-style feature specifications, saved as markdown files in `.ai/` directory
-- `/ship` - All-in-one command to commit changes, push to remote, create pull requests, and optionally create releases with intelligent defaults
+- `/plan` - Interactive planning tool that creates BDD-style feature specifications in `.ai/` directory
+- `/code` - TDD implementation agent that reads `.ai/` specs and implements features incrementally  
+- `/ship` - Git workflow automation for commit, push, PR creation, and releases
+
+**Complete Development Cycle**: `/plan` → `/code` → `/ship` → repeat
 
 Feel free to modify these commands in your project's `.claude/commands/` directory to match your own workflow preferences!
 
@@ -229,43 +234,6 @@ Feel free to modify these commands in your project's `.claude/commands/` directo
 | `<A-h>`        | Normal   | Previous tab     |
 
 ## ⚙️ Configuration
-
-### Window Types
-
-```lua
--- Current window (default) - replaces current buffer
-window = {
-  type = "current",
-}
-
--- Vertical split on the right
-window = {
-  type = "vsplit",
-  position = "right",
-  size = 80,  -- 80 columns wide
-}
-
--- Horizontal split at the bottom
-window = {
-  type = "split",
-  position = "bottom",
-  size = 15,  -- 15 lines tall
-}
-
--- New tab (full screen)
-window = {
-  type = "tabnew",
-}
-
--- Floating window
-window = {
-  type = "float",
-  position = "right",
-  size = 0.4,  -- 40% of screen width
-}
-```
-
-### Full Configuration Options
 
 ```lua
 require("claude-code").setup({

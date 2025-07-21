@@ -308,7 +308,7 @@ local function setup_claude_commands()
 	local templates_dir = plugin_dir .. "/commands"
 	
 	-- List of command templates to copy
-	local commands = {"ship.md", "plan.md"}
+	local commands = {"ship.md", "plan.md", "code.md"}
 	
 	-- Copy each command template to the project directory
 	for _, command_file in ipairs(commands) do
