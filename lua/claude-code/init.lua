@@ -167,6 +167,14 @@ function M.open()
 				vim.b[buf].render_markdown = false
 			end
 		end)
+		
+		-- Auto-save session on focus loss
+		if state.config.save_session and state.config.auto_save_session then
+			vim.api.nvim_create_autocmd({"FocusLost", "BufLeave"}, {
+				buffer = buf,
+				callback = auto_save_session,
+			})
+		end
 	end
 	
 	-- Enter insert mode
@@ -289,6 +297,28 @@ local function create_session_dir()
 	local session_dir = state.config.session_dir
 	if vim.fn.isdirectory(session_dir) == 0 then
 		vim.fn.mkdir(session_dir, "p")
+	end
+end
+
+-- Auto-save session to file
+local function auto_save_session()
+	if state.config.save_session and state.config.auto_save_session and state.terminal_bufnr and vim.api.nvim_buf_is_valid(state.terminal_bufnr) then
+		-- Save using current session if it exists
+		if state.current_session.is_named and state.current_session.filepath then
+			M.update_current_session()
+		else
+			-- For unnamed sessions, save to a default file
+			create_session_dir()
+			local lines = vim.api.nvim_buf_get_lines(state.terminal_bufnr, 0, -1, false)
+			local timestamp = os.date("%Y%m%d_%H%M%S")
+			local session_file = state.config.session_dir .. "auto_session_" .. timestamp .. ".txt"
+			vim.fn.writefile(lines, session_file)
+			
+			-- Show a brief notification if enabled
+			if state.config.auto_save_notify then
+				vim.notify("Session auto-saved", vim.log.levels.INFO, { timeout = 2000 })
+			end
+		end
 	end
 end
 
