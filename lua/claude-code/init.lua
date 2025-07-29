@@ -363,6 +363,43 @@ local function setup_claude_commands()
 	end
 end
 
+-- Setup Claude agents
+local function setup_claude_agents()
+	-- Get the current working directory (project root)
+	local cwd = vim.fn.getcwd()
+	local claude_agents_dir = cwd .. "/.claude/agents"
+	
+	-- Create .claude/agents directory if it doesn't exist
+	if vim.fn.isdirectory(claude_agents_dir) == 0 then
+		vim.fn.mkdir(claude_agents_dir, "p")
+	end
+	
+	-- Get the plugin directory
+	local plugin_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h")
+	local templates_dir = plugin_dir .. "/agents"
+	
+	-- List of agent templates to copy
+	local agents = {"product-analyst.md", "software-engineer.md"}
+	
+	-- Copy each agent template to the project directory
+	for _, agent_file in ipairs(agents) do
+		local template_path = templates_dir .. "/" .. agent_file
+		local target_path = claude_agents_dir .. "/" .. agent_file
+		
+		-- Check if template exists
+		if vim.fn.filereadable(template_path) == 1 then
+			-- Read template content
+			local template_content = vim.fn.readfile(template_path)
+			-- Write to target location
+			vim.fn.writefile(template_content, target_path)
+		else
+			vim.notify("Warning: Agent template not found: " .. template_path, vim.log.levels.WARN)
+		end
+	end
+	
+	vim.notify("Claude Code: Agents installed in " .. claude_agents_dir, vim.log.levels.INFO)
+end
+
 -- Pattern recognition for content classification
 local user_prompt_patterns = {
 	"^Human:%s*(.+)",                  -- Standard Claude format
@@ -890,6 +927,11 @@ function M.setup(opts)
 		setup_claude_commands()
 		vim.notify("Claude Code: Custom commands installed", vim.log.levels.INFO)
 	end, { desc = "Install Claude Code custom commands" })
+	
+	-- Command to manually install Claude agents
+	vim.api.nvim_create_user_command("ClaudeCodeInstallAgents", function()
+		setup_claude_agents()
+	end, { desc = "Install Claude Code agents (product-analyst, software-engineer)" })
 	
 	-- Set up keybindings
 	local keys = state.config.keybindings
