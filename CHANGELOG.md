@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Built-in Claude Agents**: Three specialized agents for different development tasks
+- **Agent Installation Command**: `:ClaudeCodeInstallAgents` to install built-in agents
+- **Flexible Agent Installation**: Choose between project-level (`.claude/agents/`) or personal-level (`~/.claude/agents/`) installation
+- **Code Reviewer Agent**: New purple-themed agent for thorough code reviews with security and performance focus
+- **Agent Templates**: Agents stored as template files in plugin directory for easy distribution
+
+### Available Agents
+
+- `product-analyst` (Purple) - Translates business requirements into clear technical specifications
+- `software-engineer` (Blue) - Implements features using TDD with continuous code review
+- `code-reviewer` (Purple) - Performs thorough code reviews focusing on quality, security, and best practices
+
+### Enhanced
+
+- **Agent Integration**: Agents work seamlessly with existing custom commands workflow
+- **Installation Choice**: Interactive prompt to choose installation location for agents
+- **Documentation**: Comprehensive documentation of built-in agents feature
+
 ## [1.7.0] - 2025-07-13
 
 ### Added

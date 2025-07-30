@@ -21,7 +21,9 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 - **LazyVim integration** - Follows LazyVim conventions with lazy loading
 - **Which-key integration** - Beautiful menu interface when pressing `<leader>cl`
 - **Smart Esc handling** - Single Esc cancels Claude actions, double Esc exits terminal mode
-- **Custom Claude commands** - Automatically installs `/push-to-prod` command for git operations
+- **Custom Claude commands** - Install opinionated commands for planning, coding, and shipping
+- **Built-in agents** - Three specialized agents (product-analyst, software-engineer, code-reviewer)
+- **Flexible agent installation** - Choose between project-level or personal-level installation
 - **Project context** - Send your project structure to Claude for better assistance
 - **Terminal mode navigation** - Multiple ways to exit terminal mode while preserving Claude functionality
 
@@ -150,6 +152,7 @@ require("claude-code").setup()
 | `:ClaudeCodeRestoreSession`  | claude: restore session                           |
 | `:ClaudeCodeNewWithSelection`| claude: new with selection                        |
 | `:ClaudeCodeInstallCommands` | claude: install custom commands                   |
+| `:ClaudeCodeInstallAgents`   | claude: install built-in agents                   |
 
 ### Default Keybindings
 
@@ -219,6 +222,40 @@ These commands are created in `.claude/commands/` in your project root:
 **Complete Development Cycle**: `/plan` → `/code` → `/ship` → repeat
 
 Feel free to modify these commands in your project's `.claude/commands/` directory to match your own workflow preferences!
+
+### Built-in Claude Agents
+
+The plugin provides built-in agent templates that can be installed at either project or personal level:
+
+To install these agents, run:
+
+```vim
+:ClaudeCodeInstallAgents
+```
+
+You'll be prompted to choose the installation location:
+- **Project level** (`.claude/agents/`) - Available only for the current project
+- **Personal level** (`~/.claude/agents/`) - Available across all your projects
+
+Available agents:
+
+| Agent | Color | Description |
+| ----- | ----- | ----------- |
+| `product-analyst` | Purple | Translates business requirements into clear technical specifications |
+| `software-engineer` | Blue | Implements features using TDD with continuous code review |
+| `code-reviewer` | Purple | Performs thorough code reviews focusing on quality and security |
+
+#### Agent Features
+
+- **product-analyst**: Creates BDD-style specifications, gathers requirements interactively
+- **software-engineer**: Reads .ai specs, implements with TDD, reviews code after each iteration
+- **code-reviewer**: Analyzes code quality, security, performance, and provides actionable feedback
+
+These agents work seamlessly with the custom commands workflow:
+1. Use `/plan` or `product-analyst` to create specifications
+2. Use `/code` or `software-engineer` to implement features
+3. Use `code-reviewer` for thorough code reviews
+4. Use `/ship` to deploy your changes
 
 ### Tab Navigation (tabnew mode only)
 

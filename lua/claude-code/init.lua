@@ -363,13 +363,20 @@ local function setup_claude_commands()
 	end
 end
 
--- Setup Claude agents
-local function setup_claude_agents()
-	-- Get the current working directory (project root)
-	local cwd = vim.fn.getcwd()
-	local claude_agents_dir = cwd .. "/.claude/agents"
+-- Setup Claude agents with location choice
+local function setup_claude_agents(location)
+	-- Determine the target directory based on location choice
+	local claude_agents_dir
+	if location == "personal" then
+		-- Personal level: ~/.claude/agents
+		claude_agents_dir = vim.fn.expand("~") .. "/.claude/agents"
+	else
+		-- Project level: ./.claude/agents (default)
+		local cwd = vim.fn.getcwd()
+		claude_agents_dir = cwd .. "/.claude/agents"
+	end
 	
-	-- Create .claude/agents directory if it doesn't exist
+	-- Create agents directory if it doesn't exist
 	if vim.fn.isdirectory(claude_agents_dir) == 0 then
 		vim.fn.mkdir(claude_agents_dir, "p")
 	end
@@ -379,9 +386,9 @@ local function setup_claude_agents()
 	local templates_dir = plugin_dir .. "/agents"
 	
 	-- List of agent templates to copy
-	local agents = {"product-analyst.md", "software-engineer.md"}
+	local agents = {"product-analyst.md", "software-engineer.md", "code-reviewer.md"}
 	
-	-- Copy each agent template to the project directory
+	-- Copy each agent template to the target directory
 	for _, agent_file in ipairs(agents) do
 		local template_path = templates_dir .. "/" .. agent_file
 		local target_path = claude_agents_dir .. "/" .. agent_file
@@ -397,7 +404,8 @@ local function setup_claude_agents()
 		end
 	end
 	
-	vim.notify("Claude Code: Agents installed in " .. claude_agents_dir, vim.log.levels.INFO)
+	local location_desc = location == "personal" and "personal (~/.claude/agents)" or "project (.claude/agents)"
+	vim.notify("Claude Code: Agents installed at " .. location_desc .. " level", vim.log.levels.INFO)
 end
 
 -- Pattern recognition for content classification
@@ -930,8 +938,22 @@ function M.setup(opts)
 	
 	-- Command to manually install Claude agents
 	vim.api.nvim_create_user_command("ClaudeCodeInstallAgents", function()
-		setup_claude_agents()
-	end, { desc = "Install Claude Code agents (product-analyst, software-engineer)" })
+		-- Ask user for installation location preference
+		vim.ui.select(
+			{"Project level (.claude/agents)", "Personal level (~/.claude/agents)"},
+			{
+				prompt = "Where would you like to install Claude Code agents?",
+				format_item = function(item) return item end,
+			},
+			function(choice)
+				if choice == "Project level (.claude/agents)" then
+					setup_claude_agents("project")
+				elseif choice == "Personal level (~/.claude/agents)" then
+					setup_claude_agents("personal")
+				end
+			end
+		)
+	end, { desc = "Install Claude Code agents (product-analyst, software-engineer, code-reviewer)" })
 	
 	-- Set up keybindings
 	local keys = state.config.keybindings
