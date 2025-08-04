@@ -242,13 +242,13 @@ Available agents:
 | Agent | Color | Description |
 | ----- | ----- | ----------- |
 | `product-analyst` | Purple | Translates business requirements into clear technical specifications |
-| `software-engineer` | Blue | Implements features using TDD with continuous code review |
+| `software-engineer` | Blue | Implements features using TDD with continuous code review, presents reasoning before changes, emphasizes readable code |
 | `code-reviewer` | Purple | Performs thorough code reviews focusing on quality and security |
 
 #### Agent Features
 
 - **product-analyst**: Creates BDD-style specifications, gathers requirements interactively
-- **software-engineer**: Reads .ai specs, implements with TDD, reviews code after each iteration
+- **software-engineer**: Reads .ai specs, implements with TDD, presents reasoning before changes, prioritizes readable/enjoyable code, reviews after each iteration
 - **code-reviewer**: Analyzes code quality, security, performance, and provides actionable feedback
 
 These agents work seamlessly with the custom commands workflow:
