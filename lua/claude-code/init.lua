@@ -14,8 +14,7 @@ local default_config = {
 	save_session = true,
 	auto_save_session = true,
 	auto_save_notify = true,
-	session_dir = vim.fn.stdpath("data") .. "/claude-code-sessions/",
-	max_exchanges = 20, -- Maximum exchanges to keep in session
+	session_dir = nil, -- Will be set dynamically to project_root/.claude/sessions/
 	setup_claude_commands = false, -- Don't automatically setup Claude custom commands
 	keybindings = {
 		toggle = "<leader>clc",
@@ -97,6 +96,324 @@ local function find_claude_window()
 	return nil
 end
 
+local last_auto_save_time = 0
+local auto_save_in_progress = false
+
+-- Get session directory (.claude/sessions/ in project root) with validation
+local function get_session_dir()
+	if not state.config.session_dir then
+		local cwd = vim.fn.getcwd()
+		-- Ensure we're working with absolute paths and validate
+		cwd = vim.fn.fnamemodify(cwd, ":p")
+		
+		-- Validate that cwd is a real directory
+		if vim.fn.isdirectory(cwd) == 0 then
+			error("Invalid working directory: " .. cwd)
+		end
+		
+		-- Build the session directory path
+		state.config.session_dir = vim.fs.normalize(cwd .. "/.claude/sessions")
+		
+		-- Additional validation to prevent traversal
+		if state.config.session_dir:find("%.%.") then
+			error("Invalid session directory path: contains directory traversal")
+		end
+		
+		-- Ensure path ends with separator
+		if not state.config.session_dir:match("/$") then
+			state.config.session_dir = state.config.session_dir .. "/"
+		end
+	end
+	return state.config.session_dir
+end
+
+-- Create session directory if it doesn't exist with error handling
+local function create_session_dir()
+	local success, session_dir = pcall(get_session_dir)
+	if not success then
+		error("Failed to get session directory: " .. tostring(session_dir))
+	end
+	
+	-- Validate the path doesn't contain dangerous patterns
+	if session_dir:find("%.%.") or session_dir:find("~") then
+		error("Invalid session directory path: " .. session_dir)
+	end
+	
+	if vim.fn.isdirectory(session_dir) == 0 then
+		local mkdir_success = pcall(vim.fn.mkdir, session_dir, "p")
+		if not mkdir_success then
+			error("Failed to create session directory: " .. session_dir)
+		end
+	end
+end
+
+-- Clean terminal artifacts and UI elements from buffer content
+local function clean_terminal_content(buffer_lines)
+	local cleaned = {}
+	
+	for _, line in ipairs(buffer_lines) do
+		-- Skip lines that are just terminal UI elements (box drawing)
+		if line:match("^[╭─│╰╮╯┌┐└┘├┤┬┴┼]+%s*$") then
+			-- Skip pure box-drawing lines
+			goto continue
+		end
+		
+		-- Skip the input prompt box line with just ">"
+		if line:match("^│%s*>%s*│$") then
+			goto continue
+		end
+		
+		-- Skip lines with corrupted unicode/escape sequences
+		if line:find("�") or line:find("\027%[") then
+			-- Try to clean the line by removing escape sequences
+			local cleaned_line = line:gsub("\027%[[%d;]*m", ""):gsub("�", "")
+			if cleaned_line:match("^%s*$") then
+				goto continue
+			end
+			line = cleaned_line
+		end
+		
+		-- Skip the "? for shortcuts" line at the end
+		if line:match("^%s*%? for shortcuts%s*$") then
+			goto continue
+		end
+		
+		table.insert(cleaned, line)
+		::continue::
+	end
+	
+	-- Remove trailing empty lines
+	while #cleaned > 0 and cleaned[#cleaned]:match("^%s*$") do
+		table.remove(cleaned)
+	end
+	
+	return cleaned
+end
+
+-- Format full session content as markdown
+local function format_full_session_content(buffer_lines, metadata)
+	local lines = {}
+	
+	-- Clean the buffer content first
+	local cleaned_content = clean_terminal_content(buffer_lines)
+	
+	-- Add markdown metadata header
+	table.insert(lines, "# Claude Code Session")
+	table.insert(lines, "")
+	table.insert(lines, "**Session:** " .. (metadata.name or "Untitled"))
+	table.insert(lines, "**Created:** " .. (metadata.created_at or os.date("%Y-%m-%d %H:%M:%S")))
+	table.insert(lines, "**Updated:** " .. os.date("%Y-%m-%d %H:%M:%S"))
+	table.insert(lines, "**Total Lines:** " .. #cleaned_content)
+	table.insert(lines, "")
+	table.insert(lines, "---")
+	table.insert(lines, "")
+	table.insert(lines, "## Session Content")
+	table.insert(lines, "")
+	
+	-- Add cleaned buffer content in a code block to preserve formatting
+	table.insert(lines, "```terminal")
+	for _, line in ipairs(cleaned_content) do
+		table.insert(lines, line)
+	end
+	table.insert(lines, "```")
+	
+	return lines
+end
+
+-- Retry mechanism for failed operations
+local function retry_operation(operation, max_retries, delay_ms)
+	max_retries = max_retries or 3
+	delay_ms = delay_ms or 100
+	
+	local retries = 0
+	local last_error
+	
+	repeat
+		local success, result = pcall(operation)
+		if success then
+			return true, result
+		end
+		
+		last_error = result
+		retries = retries + 1
+		
+		if retries < max_retries then
+			-- Wait before retrying
+			vim.wait(delay_ms, function() return false end)
+		end
+	until retries >= max_retries
+	
+	return false, "Operation failed after " .. max_retries .. " retries. Last error: " .. tostring(last_error)
+end
+
+-- Secure filename sanitization to prevent directory traversal and other attacks
+local function sanitize_filename(name)
+	if not name or name == "" then
+		return "untitled"
+	end
+	
+	-- Remove path separators and dangerous characters
+	local safe_name = name:gsub("[/\\:*?\"<>|%c]", "")  -- Remove dangerous chars
+	                      :gsub("%.%.", "")              -- Remove directory traversal
+	                      :gsub("^%s*(.-)%s*$", "%1")   -- Trim whitespace
+	                      :gsub("%s+", "_")              -- Replace spaces with underscores
+	                      :sub(1, 50)                    -- Limit length to 50 chars
+	
+	-- Ensure non-empty result
+	if safe_name == "" then
+		safe_name = "untitled"
+	end
+	
+	-- Ensure it doesn't start with a dot (hidden file)
+	if safe_name:sub(1, 1) == "." then
+		safe_name = "_" .. safe_name:sub(2)
+	end
+	
+	return safe_name
+end
+
+-- Get incremental buffer changes since last save
+local function get_buffer_changes_since_last_save()
+	if not state.terminal_bufnr or not vim.api.nvim_buf_is_valid(state.terminal_bufnr) then
+		return nil, "Invalid buffer"
+	end
+	
+	local current_line_count = vim.api.nvim_buf_line_count(state.terminal_bufnr)
+	local last_saved = state.current_session.last_saved_line or 0
+	
+	-- If buffer has been cleared or reduced, return full content
+	if current_line_count < last_saved then
+		return vim.api.nvim_buf_get_lines(state.terminal_bufnr, 0, -1, false), true
+	end
+	
+	-- If no changes, return empty
+	if current_line_count == last_saved then
+		return {}, false
+	end
+	
+	-- Return only new lines
+	return vim.api.nvim_buf_get_lines(state.terminal_bufnr, last_saved, -1, false), false
+end
+
+-- Auto-save session to file with proper error handling and concurrency control
+local function auto_save_session()
+	-- Prevent concurrent saves
+	if auto_save_in_progress then
+		return
+	end
+	
+	-- Debounce: prevent saves more frequent than every 2 seconds
+	local current_time = vim.loop.now()
+	if current_time - last_auto_save_time < 2000 then
+		return
+	end
+	
+	if not (state.config.save_session and state.config.auto_save_session and state.terminal_bufnr and vim.api.nvim_buf_is_valid(state.terminal_bufnr)) then
+		return
+	end
+	
+	auto_save_in_progress = true
+	last_auto_save_time = current_time
+	
+	-- Wrap the entire operation in pcall for error handling
+	local success, err = pcall(function()
+		-- Save using current session if it exists
+		if state.current_session.is_named and state.current_session.filepath then
+			M.update_current_session()
+		else
+			-- Create session directory with error handling
+			local dir_success, dir_err = pcall(create_session_dir)
+			if not dir_success then
+				error("Failed to create session directory: " .. tostring(dir_err))
+			end
+			
+			-- Use incremental saving for better performance
+			local changes, full_reload = get_buffer_changes_since_last_save()
+			if not changes then
+				error("Failed to get buffer changes: " .. tostring(full_reload))
+			end
+			
+			-- Skip if no changes
+			if #changes == 0 and not full_reload then
+				return
+			end
+			
+			local lines
+			if full_reload or not state.current_session.auto_session_file then
+				-- Get full buffer content for initial save or after buffer clear
+				local lines_success
+				lines_success, lines = pcall(vim.api.nvim_buf_get_lines, state.terminal_bufnr, 0, -1, false)
+				if not lines_success then
+					error("Failed to read buffer content: " .. tostring(lines))
+				end
+			else
+				-- Append only new lines to existing session
+				lines = changes
+			end
+			
+			-- Format all buffer content as markdown
+			local metadata = {
+				name = "auto_session",
+				created_at = os.date("%Y-%m-%d %H:%M:%S"),
+				incremental = not full_reload and state.current_session.auto_session_file ~= nil,
+			}
+			
+			local format_success, formatted_lines = pcall(format_full_session_content, lines, metadata)
+			if not format_success then
+				error("Failed to format session content: " .. tostring(formatted_lines))
+			end
+			
+			-- Determine session file
+			local session_file
+			if state.current_session.auto_session_file and not full_reload then
+				-- Append to existing file with retry
+				session_file = state.current_session.auto_session_file
+				local append_success, append_result = retry_operation(function()
+					local result = vim.fn.writefile(formatted_lines, session_file, "a")
+					if result ~= 0 then
+						error("writefile append returned " .. result)
+					end
+					return true
+				end, 3, 200)
+				if not append_success then
+					error("Failed to append to session file: " .. tostring(append_result))
+				end
+			else
+				-- Create new file
+				local timestamp = os.date("%Y%m%d_%H%M%S")
+				session_file = get_session_dir() .. "auto_session_" .. timestamp .. ".md"
+				state.current_session.auto_session_file = session_file
+				
+				-- Write file with retry mechanism
+				local write_success, write_result = retry_operation(function()
+					local result = vim.fn.writefile(formatted_lines, session_file)
+					if result ~= 0 then
+						error("writefile returned " .. result)
+					end
+					return true
+				end, 3, 200)
+				if not write_success then
+					error("Failed to write session file: " .. tostring(write_result))
+				end
+			end
+			
+			-- Update last saved line
+			state.current_session.last_saved_line = vim.api.nvim_buf_line_count(state.terminal_bufnr)
+			
+			-- Show a brief notification if enabled
+			if state.config.auto_save_notify then
+				vim.notify("Session auto-saved" .. (metadata.incremental and " (incremental)" or ""), vim.log.levels.INFO, { timeout = 2000 })
+			end
+		end
+	end)
+	
+	auto_save_in_progress = false
+	
+	if not success then
+		vim.notify("Auto-save failed: " .. tostring(err), vim.log.levels.ERROR)
+	end
+end
+
 -- Open Claude Code terminal
 function M.open()
 	local cmd = state.config.claude_code_cmd
@@ -168,11 +485,52 @@ function M.open()
 			end
 		end)
 		
-		-- Auto-save session on focus loss
+		-- Auto-save session on focus loss with proper cleanup
 		if state.config.save_session and state.config.auto_save_session then
+			-- Create unique autocmd groups for this buffer
+			local auto_save_group = vim.api.nvim_create_augroup("ClaudeCodeAutoSave_" .. buf, { clear = true })
+			local explorer_save_group = vim.api.nvim_create_augroup("ClaudeCodeExplorerSave_" .. buf, { clear = true })
+			
+			-- Buffer-specific auto-save
 			vim.api.nvim_create_autocmd({"FocusLost", "BufLeave"}, {
 				buffer = buf,
+				group = auto_save_group,
 				callback = auto_save_session,
+			})
+			
+			-- Global auto-save when switching away from Claude terminal
+			vim.api.nvim_create_autocmd({"BufEnter", "WinEnter"}, {
+				group = auto_save_group,
+				callback = function()
+					-- Check if we're entering a different buffer/window from Claude terminal
+					local current_buf = vim.api.nvim_get_current_buf()
+					if state.terminal_bufnr and 
+					   vim.api.nvim_buf_is_valid(state.terminal_bufnr) and 
+					   current_buf ~= state.terminal_bufnr then
+						auto_save_session()
+					end
+				end,
+			})
+			
+			-- Auto-save when entering file explorer windows
+			vim.api.nvim_create_autocmd({"FileType"}, {
+				pattern = {"NvimTree", "nerdtree", "neo-tree", "TelescopePrompt", "fzf"},
+				group = explorer_save_group,
+				callback = function()
+					if state.terminal_bufnr and vim.api.nvim_buf_is_valid(state.terminal_bufnr) then
+						auto_save_session()
+					end
+				end,
+			})
+			
+			-- Clean up autocmd groups when buffer is deleted
+			vim.api.nvim_create_autocmd("BufDelete", {
+				buffer = buf,
+				callback = function()
+					pcall(vim.api.nvim_del_augroup_by_name, "ClaudeCodeAutoSave_" .. buf)
+					pcall(vim.api.nvim_del_augroup_by_name, "ClaudeCodeExplorerSave_" .. buf)
+				end,
+				once = true,
 			})
 		end
 	end
@@ -260,10 +618,15 @@ function M.new_session()
 	-- Find and kill existing terminal
 	local buf = state.terminal_bufnr or find_claude_terminal()
 	if buf and vim.api.nvim_buf_is_valid(buf) then
+		-- Clear autocmd groups before deleting buffer
+		pcall(vim.api.nvim_del_augroup_by_name, "ClaudeCodeAutoSave")
+		pcall(vim.api.nvim_del_augroup_by_name, "ClaudeCodeExplorerSave")
 		vim.api.nvim_buf_delete(buf, { force = true })
 	end
 	
+	-- Reset state
 	state.terminal_bufnr = nil
+	state.current_session = {}
 	M.open()
 end
 
@@ -292,35 +655,8 @@ function M.send_selection(start_line, end_line)
 	vim.fn.chansend(vim.b[buf].terminal_job_id, text .. "\n")
 end
 
--- Create session directory if it doesn't exist
-local function create_session_dir()
-	local session_dir = state.config.session_dir
-	if vim.fn.isdirectory(session_dir) == 0 then
-		vim.fn.mkdir(session_dir, "p")
-	end
-end
-
--- Auto-save session to file
-local function auto_save_session()
-	if state.config.save_session and state.config.auto_save_session and state.terminal_bufnr and vim.api.nvim_buf_is_valid(state.terminal_bufnr) then
-		-- Save using current session if it exists
-		if state.current_session.is_named and state.current_session.filepath then
-			M.update_current_session()
-		else
-			-- For unnamed sessions, save to a default file
-			create_session_dir()
-			local lines = vim.api.nvim_buf_get_lines(state.terminal_bufnr, 0, -1, false)
-			local timestamp = os.date("%Y%m%d_%H%M%S")
-			local session_file = state.config.session_dir .. "auto_session_" .. timestamp .. ".txt"
-			vim.fn.writefile(lines, session_file)
-			
-			-- Show a brief notification if enabled
-			if state.config.auto_save_notify then
-				vim.notify("Session auto-saved", vim.log.levels.INFO, { timeout = 2000 })
-			end
-		end
-	end
-end
+-- Track last auto-save time to prevent rapid repeated saves
+-- Moved to before M.open function
 
 -- Setup Claude custom commands
 local function setup_claude_commands()
@@ -408,233 +744,9 @@ local function setup_claude_agents(location)
 	vim.notify("Claude Code: Agents installed at " .. location_desc .. " level", vim.log.levels.INFO)
 end
 
--- Pattern recognition for content classification
-local user_prompt_patterns = {
-	"^Human:%s*(.+)",                  -- Standard Claude format
-	"^>%s*(.+)",                       -- Command line style
-	"^%$%s*(.+)",                      -- Shell prompt style
-	"^┃%s*(.+)",                       -- Claude's input line marker
-	"^│%s*(.+)",                       -- Alternative input marker
-	"^You:%s*(.+)",                    -- Claude Code "You:" format
-	"^%s*>>>%s*(.+)",                  -- Python-style prompt
-}
 
-local claude_response_patterns = {
-	"^Assistant:%s*(.+)",              -- Standard response format
-	"^Claude:%s*(.+)",                 -- Alternative format
-}
 
--- Classify line type
-local function classify_line(line)
-	-- Remove ANSI escape sequences
-	local clean_line = line:gsub("\27%[[;%d]*m", ""):gsub("[\r\n\t]", " ")
-	
-	-- Skip empty lines
-	if clean_line:match("^%s*$") then
-		return "skip", nil
-	end
-	
-	-- Skip terminal UI elements
-	if clean_line:match("^[─┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬│]+%s*$") then
-		return "ui_element", nil
-	end
-	
-	-- Check for user prompts
-	for _, pattern in ipairs(user_prompt_patterns) do
-		local content = clean_line:match(pattern)
-		if content then
-			return "user_prompt", content
-		end
-	end
-	
-	-- Check for Claude responses
-	for _, pattern in ipairs(claude_response_patterns) do
-		local content = clean_line:match(pattern)
-		if content then
-			return "claude_start", content
-		end
-	end
-	
-	-- Code fence detection
-	if clean_line:match("^%s*```") then
-		return "code_fence", clean_line
-	end
-	
-	-- System messages to filter
-	if clean_line:match("^%[System%]") or 
-	   clean_line:match("^Loading%.%.%.") or
-	   clean_line:match("^Thinking%.%.%.") or
-	   clean_line:match("^%[%d+m%s*$") then
-		return "system_message", nil
-	end
-	
-	-- Default to content
-	return "content", clean_line
-end
-
--- Extract essential conversation elements
-local function extract_essential_content(buffer_lines, start_line)
-	local essential_content = {}
-	local in_code_block = false
-	local code_block_lines = {}
-	local last_user_prompt_idx = nil
-	local current_response = {}
-	local in_claude_response = false
-	
-	start_line = start_line or 1
-	
-	for i = start_line, #buffer_lines do
-		local line = buffer_lines[i]
-		local line_type, content = classify_line(line)
-		
-		if line_type == "user_prompt" then
-			-- Save any pending response
-			if in_claude_response and #current_response > 0 then
-				table.insert(essential_content, {
-					type = "response",
-					lines = current_response,
-					start_line = current_response[1].line_num
-				})
-				current_response = {}
-				in_claude_response = false
-			end
-			
-			-- Add user prompt
-			table.insert(essential_content, {
-				type = "user",
-				content = content,
-				line_num = i
-			})
-			last_user_prompt_idx = #essential_content
-			
-		elseif line_type == "claude_start" then
-			in_claude_response = true
-			current_response = {{content = content, line_num = i}}
-			
-		elseif line_type == "code_fence" then
-			if not in_code_block then
-				in_code_block = true
-				code_block_lines = {}
-				if in_claude_response then
-					table.insert(current_response, {content = content, line_num = i})
-				end
-			else
-				-- End of code block
-				if in_claude_response then
-					table.insert(current_response, {content = content, line_num = i})
-					-- Add code summary if block is large
-					if #code_block_lines > 20 then
-						table.insert(current_response, {
-							content = string.format("[Code block condensed: %d lines]", #code_block_lines),
-							line_num = i
-						})
-					else
-						-- Include all lines for small blocks
-						for _, code_line in ipairs(code_block_lines) do
-							table.insert(current_response, code_line)
-						end
-					end
-				end
-				in_code_block = false
-				code_block_lines = {}
-			end
-			
-		elseif in_code_block then
-			table.insert(code_block_lines, {content = line, line_num = i})
-			
-		elseif line_type == "content" and in_claude_response then
-			-- Keep content that's part of Claude's response
-			table.insert(current_response, {content = content, line_num = i})
-			
-		elseif line_type == "skip" or line_type == "ui_element" or line_type == "system_message" then
-			-- Skip these lines
-		end
-	end
-	
-	-- Save any pending response
-	if in_claude_response and #current_response > 0 then
-		table.insert(essential_content, {
-			type = "response",
-			lines = current_response,
-			start_line = current_response[1].line_num
-		})
-	end
-	
-	return essential_content
-end
-
--- Reduce tokens by keeping only recent exchanges
-local function reduce_tokens(essential_content, max_exchanges)
-	max_exchanges = max_exchanges or 10
-	
-	-- Group into exchanges
-	local exchanges = {}
-	local current_exchange = nil
-	
-	for _, item in ipairs(essential_content) do
-		if item.type == "user" then
-			if current_exchange then
-				table.insert(exchanges, current_exchange)
-			end
-			current_exchange = {
-				user_prompt = item,
-				response = nil
-			}
-		elseif item.type == "response" and current_exchange then
-			current_exchange.response = item
-		end
-	end
-	
-	-- Add last exchange if exists
-	if current_exchange then
-		table.insert(exchanges, current_exchange)
-	end
-	
-	-- Keep only recent exchanges
-	local start_idx = math.max(1, #exchanges - max_exchanges + 1)
-	local recent_exchanges = {}
-	
-	for i = start_idx, #exchanges do
-		table.insert(recent_exchanges, exchanges[i])
-	end
-	
-	return recent_exchanges
-end
-
--- Format session content for saving
-local function format_session_content(exchanges, metadata)
-	local lines = {}
-	
-	-- Add metadata header
-	table.insert(lines, "=== Claude Code Session ===")
-	table.insert(lines, "Session: " .. (metadata.name or "Untitled"))
-	table.insert(lines, "Created: " .. (metadata.created_at or os.date("%Y-%m-%d %H:%M:%S")))
-	table.insert(lines, "Updated: " .. os.date("%Y-%m-%d %H:%M:%S"))
-	table.insert(lines, "Exchanges: " .. #exchanges)
-	table.insert(lines, "========================")
-	table.insert(lines, "")
-	
-	-- Add exchanges
-	for i, exchange in ipairs(exchanges) do
-		-- User prompt
-		if exchange.user_prompt then
-			table.insert(lines, string.format("### Exchange %d ###", i))
-			table.insert(lines, "Human: " .. exchange.user_prompt.content)
-			table.insert(lines, "")
-		end
-		
-		-- Claude response
-		if exchange.response then
-			table.insert(lines, "Assistant:")
-			for _, resp_line in ipairs(exchange.response.lines) do
-				table.insert(lines, resp_line.content)
-			end
-			table.insert(lines, "")
-		end
-	end
-	
-	return lines
-end
+-- Functions moved before auto_save_session to fix dependency order
 
 -- Save session with a custom name
 function M.save_session_interactive()
@@ -693,30 +805,23 @@ function M.save_session_with_name(buf, name, is_new)
 	-- Get buffer lines
 	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 	
-	-- Extract essential content starting from last saved line
-	local start_line = is_new and 1 or (state.current_session.last_saved_line + 1)
-	local essential_content = extract_essential_content(lines, start_line)
-	
-	-- Reduce tokens if needed
-	local exchanges = reduce_tokens(essential_content, state.config.max_exchanges or 20)
-	
 	-- Prepare metadata
 	local metadata = {
 		name = name,
 		created_at = state.current_session.created_at or os.date("%Y-%m-%d %H:%M:%S"),
 	}
 	
-	-- Format content
-	local formatted_lines = format_session_content(exchanges, metadata)
+	-- Format all content as markdown
+	local formatted_lines = format_full_session_content(lines, metadata)
 	
 	-- Determine filepath
 	local filepath
 	if is_new or not state.current_session.filepath then
 		-- Create new file
-		local safe_name = name:gsub("[^%w%s%-_]", ""):gsub("%s+", "_")
+		local safe_name = sanitize_filename(name)
 		local timestamp = os.date("%Y%m%d_%H%M%S")
-		local filename = string.format("session_%s_%s.txt", timestamp, safe_name)
-		filepath = state.config.session_dir .. filename
+		local filename = string.format("session_%s_%s.md", timestamp, safe_name)
+		filepath = get_session_dir() .. filename
 	else
 		-- Use existing filepath
 		filepath = state.current_session.filepath
@@ -735,7 +840,7 @@ function M.save_session_with_name(buf, name, is_new)
 		}
 		
 		local filename = vim.fn.fnamemodify(filepath, ":t")
-		vim.notify("Session saved: " .. filename .. " (" .. #exchanges .. " exchanges)", vim.log.levels.INFO)
+		vim.notify("Session saved: " .. filename .. " (" .. #lines .. " lines)", vim.log.levels.INFO)
 	else
 		vim.notify("Failed to save session", vim.log.levels.ERROR)
 	end
@@ -760,7 +865,7 @@ end
 -- List saved sessions
 function M.list_sessions()
 	create_session_dir()
-	local session_files = vim.fn.glob(state.config.session_dir .. "session_*.txt", false, true)
+	local session_files = vim.fn.glob(get_session_dir() .. "session_*.md", false, true)
 	
 	-- Sort sessions by date (newest first)
 	table.sort(session_files, function(a, b) return a > b end)
@@ -768,7 +873,7 @@ function M.list_sessions()
 	local sessions = {}
 	for _, file in ipairs(session_files) do
 		local basename = vim.fn.fnamemodify(file, ":t")
-		local timestamp, custom_name = basename:match("session_(%d+_%d+)_?(.*)%.txt")
+		local timestamp, custom_name = basename:match("session_(%d+_%d+)_?(.*)%.md")
 		if timestamp then
 			-- Format timestamp for display
 			local year, month, day, hour, min, sec = timestamp:match("(%d%d%d%d)(%d%d)(%d%d)_(%d%d)(%d%d)(%d%d)")
