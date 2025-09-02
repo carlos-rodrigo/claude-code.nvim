@@ -16,6 +16,13 @@ local default_config = {
 	auto_save_notify = true,
 	session_dir = nil, -- Will be set dynamically to project_root/.claude/sessions/
 	setup_claude_commands = false, -- Don't automatically setup Claude custom commands
+	-- Intelligence service integration
+	intelligence = {
+		enabled = false, -- Set to true to enable AI features
+		service_url = "http://localhost:7345",
+		auto_compress = false,
+		compression_threshold_kb = 100,
+	},
 	keybindings = {
 		toggle = "<leader>clc",
 		new_session = "<leader>cln",
@@ -841,6 +848,23 @@ function M.save_session_with_name(buf, name, is_new)
 		
 		local filename = vim.fn.fnamemodify(filepath, ":t")
 		vim.notify("Session saved: " .. filename .. " (" .. #lines .. " lines)", vim.log.levels.INFO)
+		
+		-- Optionally compress with AI if enabled
+		if state.config.intelligence and state.config.intelligence.enabled and state.config.intelligence.auto_compress then
+			local content_size = #table.concat(formatted_lines, "\n") / 1024
+			if content_size >= state.config.intelligence.compression_threshold_kb then
+				vim.defer_fn(function()
+					local ok, intelligence = pcall(require, "claude-code.intelligence")
+					if ok then
+						intelligence.compress_session(filepath, function(compressed_path, err)
+							if not err and compressed_path then
+								vim.notify("Session also compressed: " .. vim.fn.fnamemodify(compressed_path, ":t"), vim.log.levels.INFO)
+							end
+						end)
+					end
+				end, 100)
+			end
+		end
 	else
 		vim.notify("Failed to save session", vim.log.levels.ERROR)
 	end
@@ -994,6 +1018,17 @@ function M.setup(opts)
 	-- Setup Claude custom commands if enabled
 	if state.config.setup_claude_commands then
 		setup_claude_commands()
+	end
+	
+	-- Setup intelligence service if enabled
+	if state.config.intelligence and state.config.intelligence.enabled then
+		local ok, intelligence = pcall(require, "claude-code.intelligence")
+		if ok then
+			intelligence.setup(state.config.intelligence)
+			intelligence.register_commands()
+		else
+			vim.notify("Failed to load intelligence module", vim.log.levels.WARN)
+		end
 	end
 	
 	-- Create user commands

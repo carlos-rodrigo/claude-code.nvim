@@ -1,0 +1,202 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claude-code-intelligence-config
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: claude-code-intelligence
+    app.kubernetes.io/component: config
+data:
+  config.yaml: |
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      read_timeout: "30s"
+      write_timeout: "30s"
+      idle_timeout: "60s"
+      
+    database:
+      type: "sqlite"
+      path: "/app/data/intelligence.db"
+      backup_path: "/app/data/backups"
+      auto_backup: true
+      backup_interval: "24h"
+      max_backups: 7
+      
+    ollama:
+      host: "claude-ollama-service"
+      port: 11434
+      timeout: "30s"
+      retry_attempts: 3
+      retry_delay: "5s"
+      models:
+        - name: "llama3.2:3b"
+          preset: "fast"
+        - name: "llama3.2:8b"
+          preset: "balanced"
+        - name: "llama3.2:70b"
+          preset: "quality"
+          
+    logging:
+      level: "info"
+      format: "json"
+      output: "/app/logs/service.log"
+      max_size: "100MB"
+      max_age: "7d"
+      max_backups: 3
+      
+    security:
+      api_key_required: true
+      cors_enabled: true
+      cors_origins: ["*"]
+      rate_limiting:
+        enabled: true
+        default_limit: 100
+        burst_limit: 150
+        window: "1m"
+        
+    monitoring:
+      metrics_enabled: true
+      health_check_interval: "30s"
+      prometheus_endpoint: "/metrics"
+      
+    cache:
+      enabled: true
+      type: "memory"
+      size_mb: 256
+      ttl: "15m"
+      cleanup_interval: "5m"
+      
+    performance:
+      max_goroutines: 100
+      gc_percent: 100
+      memory_limit_mb: 512
+      
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: nginx
+    app.kubernetes.io/component: config
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        upstream claude_backend {
+            server claude-code-intelligence-service:8080;
+            keepalive 32;
+        }
+        
+        server {
+            listen 80;
+            server_name _;
+            
+            # Health check endpoint
+            location /health {
+                proxy_pass http://claude_backend/health;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            }
+            
+            # API endpoints
+            location /api/ {
+                proxy_pass http://claude_backend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                # Timeouts
+                proxy_connect_timeout 30s;
+                proxy_send_timeout 30s;
+                proxy_read_timeout 30s;
+                
+                # Buffer settings
+                proxy_buffering on;
+                proxy_buffer_size 4k;
+                proxy_buffers 8 4k;
+            }
+            
+            # Metrics endpoint
+            location /metrics {
+                proxy_pass http://claude_backend/metrics;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+            }
+            
+            # Default location
+            location / {
+                proxy_pass http://claude_backend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            }
+        }
+    }
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/component: config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 15s
+      
+    rule_files:
+      - "/etc/prometheus/rules/*.yml"
+      
+    scrape_configs:
+      - job_name: 'claude-code-intelligence'
+        static_configs:
+          - targets: ['claude-code-intelligence-service:8080']
+        metrics_path: '/metrics'
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - claude-code-intelligence
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+            
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: []

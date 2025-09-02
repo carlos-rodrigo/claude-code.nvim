@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: claude-code-intelligence
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/part-of: claude-code
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    description: "Namespace for Claude Code Intelligence service and related components"

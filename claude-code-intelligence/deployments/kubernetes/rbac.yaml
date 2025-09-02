@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: claude-code-intelligence
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: claude-code-intelligence
+    app.kubernetes.io/instance: claude-code-intelligence
+    app.kubernetes.io/component: rbac
+automountServiceAccountToken: true
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: claude-code-intelligence
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: claude-code-intelligence
+    app.kubernetes.io/instance: claude-code-intelligence
+    app.kubernetes.io/component: rbac
+rules:
+  # Allow reading config maps for configuration updates
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  
+  # Allow reading secrets for API keys and certificates
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+  
+  # Allow reading pod information for health checks
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  
+  # Allow reading services for service discovery
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: claude-code-intelligence
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: claude-code-intelligence
+    app.kubernetes.io/instance: claude-code-intelligence
+    app.kubernetes.io/component: rbac
+subjects:
+  - kind: ServiceAccount
+    name: claude-code-intelligence
+    namespace: claude-code-intelligence
+roleRef:
+  kind: Role
+  name: claude-code-intelligence
+  apiGroup: rbac.authorization.k8s.io

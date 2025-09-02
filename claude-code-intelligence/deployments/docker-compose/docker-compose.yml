@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  claude-code-intelligence:
+    build:
+      context: ../../
+      dockerfile: deployments/docker/Dockerfile
+    container_name: claude-code-intelligence
+    restart: unless-stopped
+    environment:
+      # Server configuration
+      - PORT=7345
+      - HOST=0.0.0.0
+      - ENV=production
+      
+      # Database configuration
+      - DB_PATH=/app/data/intelligence.db
+      - DB_BACKUP_PATH=/app/data/backups
+      
+      # Ollama configuration (using host network for local Ollama)
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_PRIMARY_MODEL=llama3.2:3b
+      - OLLAMA_FALLBACK_MODEL=gemma2:2b
+      - OLLAMA_TIMEOUT=30s
+      
+      # Logging
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - LOG_FILE=/app/logs/service.log
+      
+      # Feature flags
+      - ENABLE_COMPRESSION=true
+      - ENABLE_SEARCH=true
+      - ENABLE_EMBEDDINGS=true
+      - ENABLE_MODEL_TESTING=true
+    ports:
+      - "7345:7345"
+    volumes:
+      - ../../data:/app/data
+      - ../../logs:/app/logs
+    networks:
+      - claude-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7345/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  claude-network:
+    driver: bridge

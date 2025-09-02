@@ -1,0 +1,319 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-code-intelligence
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: claude-code-intelligence
+    app.kubernetes.io/instance: claude-code-intelligence
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: claude-code
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: claude-code-intelligence
+      app.kubernetes.io/instance: claude-code-intelligence
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: claude-code-intelligence
+        app.kubernetes.io/instance: claude-code-intelligence
+        app.kubernetes.io/version: "1.0.0"
+        app.kubernetes.io/component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+        config.checksum: "placeholder" # This should be updated with config hash
+    spec:
+      serviceAccountName: claude-code-intelligence
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: claude-code-intelligence
+          image: claude-code-intelligence:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SERVER_HOST
+              value: "0.0.0.0"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DATABASE_PATH
+              value: "/app/data/intelligence.db"
+            - name: DATABASE_BACKUP_PATH
+              value: "/app/data/backups"
+            - name: OLLAMA_HOST
+              value: "claude-ollama-service"
+            - name: OLLAMA_PORT
+              value: "11434"
+            - name: CACHE_ENABLED
+              value: "true"
+            - name: METRICS_ENABLED
+              value: "true"
+            - name: API_KEY_ENABLED
+              value: "true"
+            - name: RATE_LIMIT_ENABLED
+              value: "true"
+            # Build information
+            - name: APP_VERSION
+              value: "1.0.0"
+            - name: BUILD_DATE
+              value: "2024-01-20T00:00:00Z"
+            - name: GIT_COMMIT
+              value: "placeholder"
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBERNETES_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          volumeMounts:
+            - name: config
+              mountPath: /app/configs
+              readOnly: true
+            - name: data
+              mountPath: /app/data
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          startupProbe:
+            httpGet:
+              path: /live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+            successThreshold: 1
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+              ephemeral-storage: 2Gi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+              ephemeral-storage: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+      volumes:
+        - name: config
+          configMap:
+            name: claude-code-intelligence-config
+            defaultMode: 0644
+        - name: data
+          persistentVolumeClaim:
+            claimName: claude-code-intelligence-data
+        - name: logs
+          persistentVolumeClaim:
+            claimName: claude-code-intelligence-logs
+        - name: tmp
+          emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - claude-code-intelligence
+                topologyKey: kubernetes.io/hostname
+      tolerations:
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-ollama
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/instance: claude-ollama
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/component: ai-backend
+    app.kubernetes.io/part-of: claude-code
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # Ollama doesn't support multiple replicas well
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama
+      app.kubernetes.io/instance: claude-ollama
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ollama
+        app.kubernetes.io/instance: claude-ollama
+        app.kubernetes.io/component: ai-backend
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 11434
+              protocol: TCP
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+            - name: OLLAMA_PORT
+              value: "11434"
+            - name: OLLAMA_KEEP_ALIVE
+              value: "5m"
+            - name: OLLAMA_MAX_LOADED_MODELS
+              value: "3"
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+          livenessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+              ephemeral-storage: 10Gi
+            requests:
+              cpu: 500m
+              memory: 1Gi
+              ephemeral-storage: 2Gi
+      volumes:
+        - name: ollama-data
+          persistentVolumeClaim:
+            claimName: claude-ollama-data
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: claude-code-intelligence
+  labels:
+    app.kubernetes.io/name: nginx
+    app.kubernetes.io/instance: nginx
+    app.kubernetes.io/component: reverse-proxy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nginx
+      app.kubernetes.io/instance: nginx
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nginx
+        app.kubernetes.io/instance: nginx
+        app.kubernetes.io/component: reverse-proxy
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config

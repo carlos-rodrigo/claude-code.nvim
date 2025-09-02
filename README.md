@@ -1,31 +1,43 @@
 # claude-code.nvim
 
-A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) directly into your editor as a buffer. Work with Claude AI seamlessly within your Neovim workflow using splits, tabs, or floating windows.
+A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs/build-with-claude/claude-code) directly into your editor with **intelligent session management**. Features AI-powered session compression, semantic search, smart context building, and production-ready infrastructure for enhanced productivity.
 
 ## ✨ Features
 
+### 🧠 Intelligent Session Management
+- **AI-Powered Compression** - Reduces session size by 70-80% using local LLM processing
+- **Semantic Search** - Find relevant conversations using vector embeddings
+- **Smart Context Building** - Intelligently assembles context from multiple related sessions
+- **Project Memory Consolidation** - Extracts patterns, decisions, and insights across sessions
+- **Pattern Recognition** - Identifies recurring solutions, errors, and workflows
+- **Real-time Analytics** - Comprehensive dashboard with usage statistics and insights
+
+### 🔧 Production-Ready Infrastructure
+- **Local LLM Processing** - Ollama integration with automatic model management
+- **Enterprise Security** - API key authentication, rate limiting, input validation
+- **High Availability** - Circuit breakers, graceful degradation, fallback systems
+- **Monitoring & Observability** - Prometheus metrics, health checks, structured logging
+- **Automated Backups** - Database backup with integrity verification and recovery
+- **Performance Optimization** - Adaptive caching, memory management, resource optimization
+
+### 💻 Editor Integration
 - **Buffer-based integration** - Works as regular Neovim buffers with splits/tabs
 - **Flexible window management** - Choose between splits, tabs, or floating windows
 - **Multiple independent sessions** - Open Claude Code in tab and vsplit with separate conversations
 - **Visual selection sending** - Send selected code directly to Claude with a keymap
 - **Session persistence** - Keep your Claude conversation active while navigating files
-- **Smart session management** - Intelligently saves only essential conversation content
-- **Token reduction** - Reduces saved session size by 70-80% while maintaining context
-- **Incremental saving** - Updates existing sessions with only new content, avoiding duplication
-- **Auto-save on focus loss** - Sessions are automatically saved when you switch buffers or lose focus
-- **Named session saving** - Save sessions with custom names and manage them easily
-- **Session browsing** - Browse and view previous Claude Code conversations  
-- **Session restoration** - Load saved sessions into active Claude sessions to continue conversations
-- **Start with selection** - Create new sessions with selected text as initial prompt
 - **Auto-scrolling** - Keeps the latest Claude responses visible
 - **LazyVim integration** - Follows LazyVim conventions with lazy loading
 - **Which-key integration** - Beautiful menu interface when pressing `<leader>cl`
 - **Smart Esc handling** - Single Esc cancels Claude actions, double Esc exits terminal mode
+
+### 🚀 Development Workflow
 - **Custom Claude commands** - Install opinionated commands for planning, coding, and shipping
 - **Built-in agents** - Three specialized agents (product-analyst, software-engineer, code-reviewer)
 - **Flexible agent installation** - Choose between project-level or personal-level installation
 - **Project context** - Send your project structure to Claude for better assistance
-- **Terminal mode navigation** - Multiple ways to exit terminal mode while preserving Claude functionality
+- **Incremental saving** - Updates existing sessions with only new content, avoiding duplication
+- **Named session management** - Save, browse, and restore sessions with rich metadata
 
 ## 📦 Installation
 
@@ -34,6 +46,13 @@ A Neovim plugin that integrates [Claude Code](https://docs.anthropic.com/en/docs
 1. **Install Claude Code CLI** - Available from [Anthropic](https://docs.anthropic.com)
 2. **Ensure it's in your PATH** - `claude-code` command should be accessible
 3. **LazyVim setup** - This plugin is designed for LazyVim
+4. **Dependencies** - The plugin will automatically handle installation of required dependencies:
+   - `plenary.nvim` - Auto-installed if missing (required for intelligence features)
+5. **Intelligent Backend (Optional)** - Deploy the Claude Code Intelligence service for advanced features:
+   - AI-powered session compression and search
+   - Project memory consolidation
+   - Advanced analytics and insights
+   - See [Production Deployment Guide](claude-code-intelligence/docs/production/README.md)
 
 ### Using LazyVim
 
@@ -44,6 +63,9 @@ Add this to your LazyVim plugins directory (`~/.config/nvim/lua/plugins/claude-c
 ```lua
 return {
   "carlos-rodrigo/claude-code.nvim",
+  dependencies = {
+    "nvim-lua/plenary.nvim", -- Recommended: auto-installed if missing
+  },
   keys = {
     { "<leader>clc", "<cmd>ClaudeCodeToggle<cr>", desc = "claude: toggle" },
     { "<leader>cln", "<cmd>ClaudeCodeNew<cr>", desc = "claude: new session" },
@@ -151,6 +173,10 @@ require("claude-code").setup()
 | `:ClaudeCodeSessions`        | claude: browse sessions                           |
 | `:ClaudeCodeRestoreSession`  | claude: restore session                           |
 | `:ClaudeCodeNewWithSelection`| claude: new with selection                        |
+| `:ClaudeCodeSmartSearch`     | claude: semantic search sessions (with intelligence) |
+| `:ClaudeCodeBuildContext`    | claude: build smart context (with intelligence)  |
+| `:ClaudeCodeAnalytics`       | claude: show analytics dashboard (with intelligence) |
+| `:ClaudeCodeProjectInsights` | claude: show project insights (with intelligence) |
 | `:ClaudeCodeInstallCommands` | claude: install custom commands                   |
 | `:ClaudeCodeInstallAgents`   | claude: install built-in agents                   |
 
@@ -167,6 +193,10 @@ require("claude-code").setup()
 | `<leader>clb` | Normal | claude: browse sessions       |
 | `<leader>clr` | Normal | claude: restore session       |
 | `<leader>clw` | Visual | claude: new with selection    |
+| `<leader>clf` | Normal | claude: smart search (intelligence) |
+| `<leader>clC` | Normal | claude: build context (intelligence) |
+| `<leader>cli` | Normal | claude: project insights (intelligence) |
+| `<leader>cla` | Normal | claude: analytics (intelligence) |
 
 ### In Claude Code Buffer
 
@@ -357,9 +387,74 @@ return {
 }
 ```
 
-### Smart Session Saving
+## 🧠 Intelligent Session Management
 
-Claude-code.nvim features intelligent session saving that dramatically reduces token usage while maintaining conversation context:
+### AI-Powered Session Compression
+
+The plugin now includes a production-ready **Claude Code Intelligence service** that provides advanced AI features:
+
+#### 🔥 Key Features:
+- **70-80% Compression Ratio**: AI-powered compression using local LLM processing
+- **Semantic Search**: Vector-based search across all your sessions
+- **Smart Context Building**: Intelligently assembles context from multiple related sessions
+- **Project Memory**: Consolidates insights, patterns, and decisions across your project
+- **Pattern Recognition**: Identifies recurring solutions, errors, and workflows
+- **Real-time Analytics**: Comprehensive dashboard with usage statistics
+
+#### 🚀 Backend Service Architecture:
+- **Local LLM Processing**: Ollama integration with automatic model management
+- **Enterprise Security**: API key authentication, rate limiting, input validation
+- **High Availability**: Circuit breakers, graceful degradation, fallback systems
+- **Production Ready**: Monitoring, logging, automated backups, performance optimization
+
+#### 📦 Quick Deployment:
+
+```bash
+# Option 1: Docker Compose (Recommended)
+cd claude-code-intelligence/deployments/scripts
+./deploy.sh -t docker-compose deploy
+
+# Option 2: Kubernetes (Production)
+./deploy.sh -t kubernetes -e prod deploy
+
+# Option 3: Simple Docker
+./deploy.sh -t docker deploy
+```
+
+#### 🔧 Plugin Configuration with Intelligence Service:
+
+```lua
+require("claude-code").setup({
+  -- Enable intelligent features
+  intelligence = {
+    enabled = true,
+    api_url = "http://localhost:8080/api",
+    api_key = "your-api-key", -- Get from service startup logs
+    features = {
+      compression = true,
+      semantic_search = true,
+      context_building = true,
+      analytics = true,
+    }
+  },
+  -- Standard configuration
+  claude_code_cmd = "claude",
+  save_session = true,
+  auto_save_session = true,
+})
+```
+
+#### 📊 Advanced Features Available:
+
+- **Session Analytics**: View compression stats, topic analysis, usage patterns
+- **Smart Search**: `<leader>clf` - Find sessions by semantic similarity
+- **Context Builder**: `<leader>clC` - Build context from multiple related sessions
+- **Project Insights**: `<leader>cli` - View consolidated project knowledge
+- **Pattern Analysis**: Identify recurring solutions and anti-patterns
+
+### Basic Session Saving (Fallback)
+
+Without the intelligence service, the plugin provides basic session saving:
 
 #### Key Features:
 - **Content Parsing**: Automatically identifies user prompts and Claude responses
@@ -367,13 +462,6 @@ Claude-code.nvim features intelligent session saving that dramatically reduces t
 - **Code Block Handling**: Condenses large code blocks to summaries, keeps small ones intact
 - **Incremental Updates**: Only saves new content since last save, avoiding duplication
 - **Configurable Limits**: Keep only recent exchanges (default: 20) to manage context and performance
-
-#### Why 20 Exchanges?
-The default limit balances several factors:
-- **Token Efficiency**: Stays well under AI model context limits even after restoration
-- **Conversation Quality**: Recent exchanges are most relevant for maintaining context
-- **Performance**: Faster parsing, saving, and loading operations
-- **File Size**: Keeps session files manageable and easy to review
 
 #### Customizing Exchange Limits:
 ```lua
@@ -433,15 +521,27 @@ The plugin works well with:
 
 ### Workflow Examples
 
+#### Basic Workflows
 1. **Quick Questions**: Press `<leader>clc` to toggle Claude in current window, ask quick questions
 2. **Code Review**: Select code, press `<leader>cls`, ask Claude to review
 3. **Parallel Sessions**: Use `<leader>clv` to open a separate Claude session in vsplit for different topics
 4. **Session Management**: Use `<leader>clS` to save important conversations with smart token reduction
 5. **Browse & Restore**: Use `<leader>clb` to browse saved sessions and load them into active Claude
 6. **Smart Navigation**: Single `<Esc>` cancels Claude actions, double `<Esc><Esc>` for vim navigation
-7. **Debugging**: Send error logs to Claude for analysis
-8. **Documentation**: Send functions to Claude to generate docs
-9. **Refactoring**: Get Claude's suggestions for code improvements
+
+#### Intelligent Workflows (with Intelligence Service)
+7. **Semantic Search**: Press `<leader>clf` to find related sessions by meaning, not just keywords
+8. **Smart Context**: Press `<leader>clC` to build intelligent context from multiple related sessions
+9. **Project Insights**: Press `<leader>cli` to view consolidated project knowledge and patterns
+10. **Analytics Dashboard**: Press `<leader>cla` to view session analytics and compression stats
+11. **Pattern Recognition**: Discover recurring solutions and anti-patterns across your project
+12. **Knowledge Consolidation**: Get AI-generated summaries of decisions and insights over time
+
+#### Development Workflows
+13. **Debugging**: Send error logs to Claude for analysis with historical context
+14. **Documentation**: Send functions to Claude to generate docs based on project patterns
+15. **Refactoring**: Get Claude's suggestions with awareness of your project's architecture
+16. **Learning**: Find sessions where you solved similar problems before
 
 ### Session Management Workflow
 
@@ -514,10 +614,50 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [LazyVim](https://github.com/LazyVim/LazyVim) for the excellent Neovim distribution
 - The Neovim community for the amazing ecosystem
 
+## 🚀 Production Deployment
+
+For teams and power users, the Claude Code Intelligence service provides enterprise-grade features:
+
+### Quick Start
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/carlos-rodrigo/claude-code.nvim
+cd claude-code.nvim/claude-code-intelligence
+
+# 2. Deploy with Docker Compose
+cd deployments/scripts
+./deploy.sh -t docker-compose deploy
+
+# 3. Get API key from logs
+docker-compose -f ../docker-compose/docker-compose.yml logs claude-code-intelligence | grep "admin API key"
+
+# 4. Configure Neovim plugin
+# Add the API key to your plugin configuration
+```
+
+### Production Features
+
+- **🔒 Enterprise Security**: API key authentication, rate limiting, input validation
+- **📊 Advanced Analytics**: Session analytics, compression stats, usage patterns
+- **🔍 Semantic Search**: Vector-based search across all sessions
+- **🧠 Smart Context**: AI-powered context building from multiple sessions
+- **🏗️ High Availability**: Circuit breakers, graceful degradation, fallback systems
+- **📈 Monitoring**: Prometheus metrics, Grafana dashboards, health checks
+- **💾 Backup & Recovery**: Automated backups with integrity verification
+- **🚢 Easy Deployment**: Docker, Kubernetes, Docker Compose support
+
+### Documentation
+
+- **[Production Deployment Guide](claude-code-intelligence/docs/production/README.md)** - Complete setup and configuration
+- **[API Documentation](claude-code-intelligence/docs/production/API.md)** - REST API reference
+- **[Architecture Overview](claude-code-intelligence/internal/)** - Technical implementation details
+
 ## 📚 Related Projects
 
 - [Claude Code CLI](https://docs.anthropic.com) - The official Claude Code command-line tool
 - [LazyVim](https://github.com/LazyVim/LazyVim) - The Neovim configuration this plugin is designed for
+- [Ollama](https://ollama.com) - Local LLM runtime for the intelligence service
 - [nvim-terminal.lua](https://github.com/s1n7ax/nvim-terminal) - Terminal integration inspiration
 
 ---
