@@ -202,6 +202,7 @@ Available commands:
 | `/plan` | Interactive BDD specification builder for feature planning |
 | `/code` | TDD-focused implementation agent that reads .ai specs |
 | `/ship` | Streamlined git workflow: commit, push, PR, and release |
+| `/research` | Comprehensive research agent for codebase and web analysis |
 
 #### My Workflow Philosophy
 
@@ -218,8 +219,9 @@ These commands are created in `.claude/commands/` in your project root:
 - `/plan` - Interactive planning tool that creates BDD-style feature specifications in `.ai/` directory
 - `/code` - TDD implementation agent that reads `.ai/` specs and implements features incrementally  
 - `/ship` - Git workflow automation for commit, push, PR creation, and releases
+- `/research` - Comprehensive research agent that analyzes codebase and web resources, organizing findings in `.ai/[topic]/research.md`
 
-**Complete Development Cycle**: `/plan` → `/code` → `/ship` → repeat
+**Complete Development Cycle**: `/research` → `/plan` → `/code` → `/ship` → repeat
 
 Feel free to modify these commands in your project's `.claude/commands/` directory to match your own workflow preferences!
 
