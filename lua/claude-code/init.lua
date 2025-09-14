@@ -722,7 +722,7 @@ local function setup_claude_agents(location)
 	local templates_dir = plugin_dir .. "/agents"
 	
 	-- List of agent templates to copy
-	local agents = {"product-analyst.md", "software-engineer.md", "code-reviewer.md"}
+	local agents = {"product-analyst.md", "software-engineer.md", "code-reviewer.md", "researcher.md"}
 	
 	-- Copy each agent template to the target directory
 	for _, agent_file in ipairs(agents) do
